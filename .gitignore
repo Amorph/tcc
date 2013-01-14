@@ -127,25 +127,6 @@ Thumbs.db
 Desktop.ini
 
 
-#############
-## Python
-#############
-
-*.py[co]
-
-# Packages
-*.egg
-*.egg-info
-dist
-build
-eggs
-parts
-bin
-var
-sdist
-develop-eggs
-.installed.cfg
-
 # Installer logs
 pip-log.txt
 
@@ -161,3 +142,7 @@ pip-log.txt
 
 # Mac crap
 .DS_Store
+
+
+win32/build/Debug-*
+win32/build/Release-*

@@ -1,0 +1,26 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 2012
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "libtcc", "libtcc.vcxproj", "{95BD9266-553D-432D-BF54-2A65712F08F8}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Win32-DLL = Debug|Win32-DLL
+		Debug|Win32-StaticLib = Debug|Win32-StaticLib
+		Release|Win32-DLL = Release|Win32-DLL
+		Release|Win32-StaticLib = Release|Win32-StaticLib
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{95BD9266-553D-432D-BF54-2A65712F08F8}.Debug|Win32-DLL.ActiveCfg = Debug-DLL|Win32
+		{95BD9266-553D-432D-BF54-2A65712F08F8}.Debug|Win32-DLL.Build.0 = Debug-DLL|Win32
+		{95BD9266-553D-432D-BF54-2A65712F08F8}.Debug|Win32-StaticLib.ActiveCfg = Debug-StaticLib|Win32
+		{95BD9266-553D-432D-BF54-2A65712F08F8}.Debug|Win32-StaticLib.Build.0 = Debug-StaticLib|Win32
+		{95BD9266-553D-432D-BF54-2A65712F08F8}.Release|Win32-DLL.ActiveCfg = Release-DLL|Win32
+		{95BD9266-553D-432D-BF54-2A65712F08F8}.Release|Win32-DLL.Build.0 = Release-DLL|Win32
+		{95BD9266-553D-432D-BF54-2A65712F08F8}.Release|Win32-StaticLib.ActiveCfg = Release-StaticLib|Win32
+		{95BD9266-553D-432D-BF54-2A65712F08F8}.Release|Win32-StaticLib.Build.0 = Release-StaticLib|Win32
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal
