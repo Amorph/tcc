@@ -268,12 +268,12 @@ static inline int get_reg_shift(TCCState *s1)
     return shift;
 }
 
-static int asm_parse_reg(void)
+static int asm_parse_reg(TCCState *tcc_state)
 {
     int reg = 0;
     if (tok != '%')
         goto error_32;
-    next();
+    next(tcc_state);
     if (tok >= TOK_ASM_eax && tok <= TOK_ASM_edi) {
         reg = tok - TOK_ASM_eax;
 #ifdef TCC_TARGET_X86_64
@@ -288,7 +288,7 @@ static int asm_parse_reg(void)
     error_32:
         expect("register");
     }
-    next();
+    next(tcc_state);
     return reg;
 }
 
@@ -300,12 +300,12 @@ static void parse_operand(TCCState *s1, Operand *op)
 
     indir = 0;
     if (tok == '*') {
-        next();
+        next(s1);
         indir = OP_INDIR;
     }
 
     if (tok == '%') {
-        next();
+        next(s1);
         if (tok >= TOK_ASM_al && tok <= TOK_ASM_db7) {
             reg = tok - TOK_ASM_al;
             op->type = 1 << (reg >> 3); /* WARNING: do not change constant order */
@@ -325,9 +325,9 @@ static void parse_operand(TCCState *s1, Operand *op)
         } else if (tok == TOK_ASM_st) {
             op->type = OP_ST;
             op->reg = 0;
-            next();
+            next(s1);
             if (tok == '(') {
-                next();
+                next(s1);
                 if (tok != TOK_PPNUM)
                     goto reg_error;
                 p = tokc.cstr->data;
@@ -335,8 +335,8 @@ static void parse_operand(TCCState *s1, Operand *op)
                 if ((unsigned)reg >= 8 || p[1] != '\0')
                     goto reg_error;
                 op->reg = reg;
-                next();
-                skip(')');
+                next(s1);
+                skip(s1, ')');
             }
             if (op->reg == 0)
                 op->type |= OP_ST0;
@@ -345,11 +345,11 @@ static void parse_operand(TCCState *s1, Operand *op)
         reg_error:
             tcc_error("unknown register");
         }
-        next();
+        next(s1);
     no_skip: ;
     } else if (tok == '$') {
         /* constant value */
-        next();
+        next(s1);
         asm_expr(s1, &e);
         op->type = OP_IM;
         op->e.v = e.v;
@@ -377,7 +377,7 @@ static void parse_operand(TCCState *s1, Operand *op)
             op->e.v = e.v;
             op->e.sym = e.sym;
         } else {
-            next();
+            next(s1);
             if (tok == '%') {
                 unget_tok('(');
                 op->e.v = 0;
@@ -387,27 +387,27 @@ static void parse_operand(TCCState *s1, Operand *op)
                 asm_expr(s1, &e);
                 if (tok != ')')
                     expect(")");
-                next();
+                next(s1);
                 op->e.v = e.v;
                 op->e.sym = e.sym;
             }
         }
         if (tok == '(') {
-            next();
+            next(s1);
             if (tok != ',') {
-                op->reg = asm_parse_reg();
+                op->reg = asm_parse_reg(s1);
             }
             if (tok == ',') {
-                next();
+                next(s1);
                 if (tok != ',') {
-                    op->reg2 = asm_parse_reg();
+                    op->reg2 = asm_parse_reg(s1);
                 }
                 if (tok == ',') {
-                    next();
+                    next(s1);
                     op->shift = get_reg_shift(s1);
                 }
             }
-            skip(')');
+            skip(s1, ')');
         }
         if (op->reg == -1 && op->reg2 == -1)
             op->type |= OP_ADDR;
@@ -416,20 +416,20 @@ static void parse_operand(TCCState *s1, Operand *op)
 }
 
 /* XXX: unify with C code output ? */
-ST_FUNC void gen_expr32(ExprValue *pe)
+ST_FUNC void gen_expr32(TCCState *tcc_state, ExprValue *pe)
 {
-    gen_addr32(pe->sym ? VT_SYM : 0, pe->sym, pe->v);
+    gen_addr32(tcc_state, pe->sym ? VT_SYM : 0, pe->sym, pe->v);
 }
 
 #ifdef TCC_TARGET_X86_64
-static void gen_expr64(ExprValue *pe)
+static void gen_expr64(TCCState *tcc_state, ExprValue *pe)
 {
-    gen_addr64(pe->sym ? VT_SYM : 0, pe->sym, pe->v);
+    gen_addr64(tcc_state, pe->sym ? VT_SYM : 0, pe->sym, pe->v);
 }
 #endif
 
 /* XXX: unify with C code output ? */
-static void gen_disp32(ExprValue *pe)
+static void gen_disp32(TCCState *tcc_state, ExprValue *pe)
 {
     Sym *sym = pe->sym;
     if (sym && sym->r == cur_text_section->sh_num) {
@@ -443,18 +443,18 @@ static void gen_disp32(ExprValue *pe)
             sym->type.t = VT_FUNC;
             sym->type.ref = NULL;
         }
-        gen_addrpc32(VT_SYM, sym, pe->v);
+        gen_addrpc32(tcc_state, VT_SYM, sym, pe->v);
     }
 }
 
 #ifdef I386_ASM_16
-static void gen_expr16(ExprValue *pe)
+static void gen_expr16(TCCState *tcc_state, ExprValue *pe)
 {
     if (pe->sym)
-        greloc(cur_text_section, pe->sym, ind, R_386_16);
+        greloc(tcc_state, cur_text_section, pe->sym, ind, R_386_16);
     gen_le16(pe->v);
 }
-static void gen_disp16(ExprValue *pe)
+static void gen_disp16(TCCState *tcc_state, ExprValue *pe)
 {
     Sym *sym;
     sym = pe->sym;
@@ -466,12 +466,12 @@ static void gen_disp16(ExprValue *pe)
                elimination in the linker */
             gen_le16(pe->v + sym->jnext - ind - 2);
         } else {
-            greloc(cur_text_section, sym, ind, R_386_PC16);
+            greloc(tcc_state, cur_text_section, sym, ind, R_386_PC16);
             gen_le16(pe->v - 2);
         }
     } else {
         /* put an empty PC32 relocation */
-        put_elf_reloc(symtab_section, cur_text_section,
+        put_elf_reloc(tcc_state, symtab_section, cur_text_section,
                       ind, R_386_PC16, 0);
         gen_le16(pe->v - 2);
     }
@@ -479,7 +479,7 @@ static void gen_disp16(ExprValue *pe)
 #endif
 
 /* generate the modrm operand */
-static inline void asm_modrm(int reg, Operand *op)
+static inline void asm_modrm(TCCState *tcc_state, int reg, Operand *op)
 {
     int mod, reg1, reg2, sib_reg1;
 
@@ -495,7 +495,7 @@ static inline void asm_modrm(int reg, Operand *op)
 #endif
         {
             g(0x05 + (reg << 3));
-            gen_expr32(&op->e);
+            gen_expr32(tcc_state, &op->e);
         }
     } else {
         sib_reg1 = op->reg;
@@ -571,7 +571,7 @@ static inline void asm_modrm(int reg, Operand *op)
                 gen_expr16(&op->e);
             else if (tcc_state->seg_size == 32)
 #endif
-                gen_expr32(&op->e);
+                gen_expr32(tcc_state, &op->e);
         }
     }
 }
@@ -607,7 +607,7 @@ ST_FUNC void asm_opcode(TCCState *s1, int opcode)
            if (pop->type != OP_SEG || seg_prefix)
                tcc_error("incorrect prefix");
            seg_prefix = segment_prefixes[pop->reg];
-           next();
+           next(s1);
            parse_operand(s1, pop);
 #ifndef I386_ASM_16
            if (!(pop->type & OP_EA)) {
@@ -619,7 +619,7 @@ ST_FUNC void asm_opcode(TCCState *s1, int opcode)
         nb_ops++;
         if (tok != ',')
             break;
-        next();
+        next(s1);
     }
 
     is_short_jmp = 0;
@@ -902,7 +902,7 @@ ST_FUNC void asm_opcode(TCCState *s1, int opcode)
             }
         }
 
-        asm_modrm(reg, &ops[modrm_index]);
+        asm_modrm(s1, reg, &ops[modrm_index]);
     }
 
     /* emit constants */
@@ -914,7 +914,7 @@ ST_FUNC void asm_opcode(TCCState *s1, int opcode)
             gen_expr16(&ops[1].e);
         else
 #endif
-            gen_expr32(&ops[1].e);
+            gen_expr32(s1, &ops[1].e);
         if (ops[0].e.sym)
             tcc_error("cannot relocate");
         gen_le16(ops[0].e.v);
@@ -957,22 +957,22 @@ ST_FUNC void asm_opcode(TCCState *s1, int opcode)
                         g(ops[i].e.v);
 #ifdef I386_ASM_16
                     else if (s1->seg_size == 16)
-                        gen_disp16(&ops[i].e);
+                        gen_disp16(s1, &ops[i].e);
 #endif
                     else
-                        gen_disp32(&ops[i].e);
+                        gen_disp32(s1, &ops[i].e);
                 } else {
 #ifdef I386_ASM_16
                     if (s1->seg_size == 16 && !((o32 == 1) && (v & OP_IM32)))
-                        gen_expr16(&ops[i].e);
+                        gen_expr16(s1, &ops[i].e);
                     else
 #endif
 #ifdef TCC_TARGET_X86_64
                     if (v & OP_IM64)
-                        gen_expr64(&ops[i].e);
+                        gen_expr64(s1, &ops[i].e);
                     else
 #endif
-                        gen_expr32(&ops[i].e);
+                        gen_expr32(s1, &ops[i].e);
                 }
             }
 #ifdef I386_ASM_16
@@ -1383,7 +1383,7 @@ ST_FUNC void subst_asm_operand(CString *add_str,
 }
 
 /* generate prolog and epilog code for asm statement */
-ST_FUNC void asm_gen_code(ASMOperand *operands, int nb_operands,
+ST_FUNC void asm_gen_code(TCCState *tcc_state, ASMOperand *operands, int nb_operands,
                          int nb_outputs, int is_output,
                          uint8_t *clobber_regs,
                          int out_reg)
@@ -1424,15 +1424,15 @@ ST_FUNC void asm_gen_code(ASMOperand *operands, int nb_operands,
                     SValue sv;
                     sv = *op->vt;
                     sv.r = (sv.r & ~VT_VALMASK) | VT_LOCAL;
-                    load(op->reg, &sv);
+                    load(tcc_state, op->reg, &sv);
                 } else if (i >= nb_outputs || op->is_rw) {
                     /* load value in register */
-                    load(op->reg, op->vt);
+                    load(tcc_state, op->reg, op->vt);
                     if (op->is_llong) {
                         SValue sv;
                         sv = *op->vt;
                         sv.c.ul += 4;
-                        load(TREG_XDX, &sv);
+                        load(tcc_state, TREG_XDX, &sv);
                     }
                 }
             }
@@ -1447,18 +1447,18 @@ ST_FUNC void asm_gen_code(ASMOperand *operands, int nb_operands,
                         SValue sv;
                         sv = *op->vt;
                         sv.r = (sv.r & ~VT_VALMASK) | VT_LOCAL;
-                        load(out_reg, &sv);
+                        load(tcc_state, out_reg, &sv);
 
                         sv.r = (sv.r & ~VT_VALMASK) | out_reg;
-                        store(op->reg, &sv);
+                        store(tcc_state, op->reg, &sv);
                     }
                 } else {
-                    store(op->reg, op->vt);
+                    store(tcc_state, op->reg, op->vt);
                     if (op->is_llong) {
                         SValue sv;
                         sv = *op->vt;
                         sv.c.ul += 4;
-                        store(TREG_XDX, &sv);
+                        store(tcc_state, TREG_XDX, &sv);
                     }
                 }
             }

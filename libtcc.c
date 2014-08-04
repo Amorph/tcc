@@ -30,7 +30,7 @@ ST_DATA int gnu_ext = 1;
 ST_DATA int tcc_ext = 1;
 
 /* XXX: get rid of this ASAP */
-ST_DATA struct TCCState *tcc_state;
+//ST_DATA struct TCCState *tcc_state;
 
 /********************************************************/
 
@@ -64,14 +64,15 @@ ST_DATA struct TCCState *tcc_state;
 #include "tccpe.c"
 #endif
 #endif /* ONE_SOURCE */
-
+//TODO TEMP
+TCCState* tcc_state;
 /********************************************************/
 #ifndef CONFIG_TCC_ASM
-ST_FUNC void asm_instr(void)
+ST_FUNC void asm_instr(TCCState* tcc_state)
 {
     tcc_error("inline asm() not supported");
 }
-ST_FUNC void asm_global_instr(void)
+ST_FUNC void asm_global_instr(TCCState *tcc_state)
 {
     tcc_error("inline asm() not supported");
 }
@@ -423,7 +424,7 @@ ST_FUNC Section *find_section(TCCState *s1, const char *name)
 
 /* update sym->c so that it points to an external symbol in section
    'section' with value 'value' */
-ST_FUNC void put_extern_sym2(Sym *sym, Section *section,
+ST_FUNC void put_extern_sym2(TCCState *tcc_state, Sym *sym, Section *section,
                             addr_t value, unsigned long size,
                             int can_add_underscore)
 {
@@ -479,7 +480,9 @@ ST_FUNC void put_extern_sym2(Sym *sym, Section *section,
             case TOK_memset:
             case TOK_strlen:
             case TOK_strcpy:
+#if defined TCC_TARGET_I386 || defined TCC_TARGET_X86_64
             case TOK_alloca:
+#endif
                 strcpy(buf, "__bound_");
                 strcat(buf, name);
                 name = buf;
@@ -521,7 +524,7 @@ ST_FUNC void put_extern_sym2(Sym *sym, Section *section,
             name = sym->asm_label;
         }
         info = ELFW(ST_INFO)(sym_bind, sym_type);
-        sym->c = add_elf_sym(symtab_section, value, size, info, other, sh_num, name);
+        sym->c = add_elf_sym(tcc_state, symtab_section, value, size, info, other, sh_num, name);
     } else {
         esym = &((ElfW(Sym) *)symtab_section->data)[sym->c];
         esym->st_value = value;
@@ -530,23 +533,23 @@ ST_FUNC void put_extern_sym2(Sym *sym, Section *section,
     }
 }
 
-ST_FUNC void put_extern_sym(Sym *sym, Section *section,
+ST_FUNC void put_extern_sym(TCCState *tcc_state, Sym *sym, Section *section,
                            addr_t value, unsigned long size)
 {
-    put_extern_sym2(sym, section, value, size, 1);
+    put_extern_sym2(tcc_state, sym, section, value, size, 1);
 }
 
 /* add a new relocation entry to symbol 'sym' in section 's' */
-ST_FUNC void greloc(Section *s, Sym *sym, unsigned long offset, int type)
+ST_FUNC void greloc(TCCState *tcc_state, Section *s, Sym *sym, unsigned long offset, int type)
 {
     int c = 0;
     if (sym) {
         if (0 == sym->c)
-            put_extern_sym(sym, NULL, 0, 0);
+            put_extern_sym(tcc_state, sym, NULL, 0, 0);
         c = sym->c;
     }
     /* now we can add ELF relocation info */
-    put_elf_reloc(symtab_section, s, offset, type, c);
+    put_elf_reloc(tcc_state, symtab_section, s, offset, type, c);
 }
 
 /********************************************************/
@@ -734,9 +737,9 @@ static int tcc_compile(TCCState *s1)
         normalize_slashes(buf);
 #endif
         pstrcat(buf, sizeof(buf), "/");
-        put_stabs_r(buf, N_SO, 0, 0,
+        put_stabs_r(s1, buf, N_SO, 0, 0,
                     text_section->data_offset, text_section, section_sym);
-        put_stabs_r(file->filename, N_SO, 0, 0,
+        put_stabs_r(s1, file->filename, N_SO, 0, 0,
                     text_section->data_offset, text_section, section_sym);
     }
     /* an elf symbol of type STT_FILE must be put so that STB_LOCAL
@@ -787,8 +790,8 @@ static int tcc_compile(TCCState *s1)
         tok_flags = TOK_FLAG_BOL | TOK_FLAG_BOF;
         parse_flags = PARSE_FLAG_PREPROCESS | PARSE_FLAG_TOK_NUM;
         pvtop = vtop;
-        next();
-        decl(VT_CONST);
+        next(s1);
+        decl(s1, VT_CONST);
         if (tok != TOK_EOF)
             expect("declaration");
         if (pvtop != vtop)
@@ -796,7 +799,7 @@ static int tcc_compile(TCCState *s1)
 
         /* end of translation unit info */
         if (s1->do_debug) {
-            put_stabs_r(NULL, N_SO, 0, 0,
+            put_stabs_r(s1, NULL, N_SO, 0, 0,
                         text_section->data_offset, text_section, section_sym);
         }
     }
@@ -807,7 +810,7 @@ static int tcc_compile(TCCState *s1)
        they are undefined) */
     free_defines(define_start);
 
-    gen_inline_functions();
+    gen_inline_functions(s1);
 
     sym_pop(&global_stack, NULL);
     sym_pop(&local_stack, NULL);
@@ -845,8 +848,8 @@ LIBTCCAPI void tcc_define_symbol(TCCState *s1, const char *sym, const char *valu
 
     /* parse with define parser */
     ch = file->buf_ptr[0];
-    next_nomacro();
-    parse_define();
+    next_nomacro(s1);
+    parse_define(s1);
 
     tcc_close();
 }
@@ -1314,7 +1317,7 @@ LIBTCCAPI int tcc_add_symbol(TCCState *s, const char *name, const void *val)
        So it is handled here as if it were in a DLL. */
     pe_putimport(s, 0, name, (uintptr_t)val);
 #else
-    add_elf_sym(symtab_section, (uintptr_t)val, 0,
+    add_elf_sym(s, symtab_section, (uintptr_t)val, 0,
         ELFW(ST_INFO)(STB_GLOBAL, STT_NOTYPE), 0,
         SHN_ABS, name);
 #endif

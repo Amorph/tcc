@@ -103,19 +103,20 @@ struct macro_level {
     const int *p;
 };
 
-static void next_nomacro_spc(void);
+static void next_nomacro_spc(TCCState *tcc_state);
 static void macro_subst(
+	TCCState *tcc_state,
     TokenString *tok_str,
     Sym **nested_list,
     const int *macro_str,
     struct macro_level **can_read_stream
     );
 
-ST_FUNC void skip(int c)
+ST_FUNC void skip(TCCState* tcc_state, int c)
 {
     if (tok != c)
         tcc_error("'%c' expected (got \"%s\")", c, get_tok_str(tok, &tokc));
-    next();
+    next(tcc_state);
 }
 
 ST_FUNC void expect(const char *msg)
@@ -718,7 +719,7 @@ static uint8_t *parse_pp_string(uint8_t *p,
 
 /* skip block of text until #else, #elif or #endif. skip also pairs of
    #if/#endif */
-static void preprocess_skip(void)
+static void preprocess_skip(TCCState *tcc_state)
 {
     int a, start_of_line, c, in_warn_or_error;
     uint8_t *p;
@@ -779,7 +780,7 @@ redo_start:
             p++;
             if (start_of_line) {
                 file->buf_ptr = p;
-                next_nomacro();
+                next_nomacro(tcc_state);
                 p = file->buf_ptr;
                 if (a == 0 && 
                     (tok == TOK_ELSE || tok == TOK_ELIF || tok == TOK_ENDIF))
@@ -1104,7 +1105,7 @@ ST_FUNC void free_defines(Sym *b)
 }
 
 /* label lookup */
-ST_FUNC Sym *label_find(int v)
+ST_FUNC Sym *label_find(TCCState *tcc_state, int v)
 {
     v -= TOK_IDENT;
     if ((unsigned)v >= (unsigned)(tok_ident - TOK_IDENT))
@@ -1112,7 +1113,7 @@ ST_FUNC Sym *label_find(int v)
     return table_ident[v]->sym_label;
 }
 
-ST_FUNC Sym *label_push(Sym **ptop, int v, int flags)
+ST_FUNC Sym *label_push(TCCState *tcc_state, Sym **ptop, int v, int flags)
 {
     Sym *s, **ps;
     s = sym_push2(ptop, v, 0, 0);
@@ -1131,7 +1132,7 @@ ST_FUNC Sym *label_push(Sym **ptop, int v, int flags)
 
 /* pop labels until element last is reached. Look if any labels are
    undefined. Define symbols if '&&label' was used. */
-ST_FUNC void label_pop(Sym **ptop, Sym *slast)
+ST_FUNC void label_pop(TCCState *tcc_state, Sym **ptop, Sym *slast)
 {
     Sym *s, *s1;
     for(s = *ptop; s != slast; s = s1) {
@@ -1145,7 +1146,7 @@ ST_FUNC void label_pop(Sym **ptop, Sym *slast)
             if (s->c) {
                 /* define corresponding symbol. A size of
                    1 is put. */
-                put_extern_sym(s, cur_text_section, s->jnext, 1);
+                put_extern_sym(tcc_state, s, cur_text_section, s->jnext, 1);
             }
         }
         /* remove label */
@@ -1156,22 +1157,22 @@ ST_FUNC void label_pop(Sym **ptop, Sym *slast)
 }
 
 /* eval an expression for #if/#elif */
-static int expr_preprocess(void)
+static int expr_preprocess(TCCState *tcc_state)
 {
     int c, t;
     TokenString str;
     
     tok_str_new(&str);
     while (tok != TOK_LINEFEED && tok != TOK_EOF) {
-        next(); /* do macro subst */
+        next(tcc_state); /* do macro subst */
         if (tok == TOK_DEFINED) {
-            next_nomacro();
+            next_nomacro(tcc_state);
             t = tok;
             if (t == '(') 
-                next_nomacro();
+                next_nomacro(tcc_state);
             c = define_find(tok) != 0;
             if (t == '(')
-                next_nomacro();
+                next_nomacro(tcc_state);
             tok = TOK_CINT;
             tokc.i = c;
         } else if (tok >= TOK_IDENT) {
@@ -1185,8 +1186,8 @@ static int expr_preprocess(void)
     tok_str_add(&str, 0);
     /* now evaluate C constant expression */
     macro_ptr = str.str;
-    next();
-    c = expr_const();
+    next(tcc_state);
+    c = expr_const(tcc_state);
     macro_ptr = NULL;
     tok_str_free(str.str);
     return c != 0;
@@ -1210,7 +1211,7 @@ static void tok_print(int *str)
 #endif
 
 /* parse after #define */
-ST_FUNC void parse_define(void)
+ST_FUNC void parse_define(TCCState* tcc_state)
 {
     Sym *s, *first, **ps;
     int v, t, varg, is_vaargs, spc, ptok, macro_list_start;
@@ -1223,20 +1224,20 @@ ST_FUNC void parse_define(void)
     first = NULL;
     t = MACRO_OBJ;
     /* '(' must be just after macro definition for MACRO_FUNC */
-    next_nomacro_spc();
+    next_nomacro_spc(tcc_state);
     if (tok == '(') {
-        next_nomacro();
+        next_nomacro(tcc_state);
         ps = &first;
         while (tok != ')') {
             varg = tok;
-            next_nomacro();
+            next_nomacro(tcc_state);
             is_vaargs = 0;
             if (varg == TOK_DOTS) {
                 varg = TOK___VA_ARGS__;
                 is_vaargs = 1;
-            } else if (tok == TOK_DOTS && gnu_ext) {
+            } else if (tok == TOK_DOTS && tcc_state->gnu_ext) {
                 is_vaargs = 1;
-                next_nomacro();
+                next_nomacro(tcc_state);
             }
             if (varg < TOK_IDENT)
                 tcc_error( "\'%s\' may not appear in parameter list", get_tok_str(varg, NULL));
@@ -1245,9 +1246,9 @@ ST_FUNC void parse_define(void)
             ps = &s->next;
             if (tok != ',')
                 continue;
-            next_nomacro();
+            next_nomacro(tcc_state);
         }
-        next_nomacro_spc();
+		next_nomacro_spc(tcc_state);
         t = MACRO_FUNC;
     }
     tok_str_new(&str);
@@ -1271,7 +1272,7 @@ ST_FUNC void parse_define(void)
         }
         tok_str_add2(&str, tok, &tokc);
     skip:
-        next_nomacro_spc();
+        next_nomacro_spc(tcc_state);
         macro_list_start = 0;
     }
     if (ptok == TOK_TWOSHARPS)
@@ -1342,7 +1343,7 @@ static void pragma_parse(TCCState *s1)
 {
     int val;
 
-    next();
+    next(s1);
     if (tok == TOK_pack) {
         /*
           This may be:
@@ -1351,10 +1352,10 @@ static void pragma_parse(TCCState *s1)
           #pragma pack(push,1) // push & set
           #pragma pack(pop) // restore previous
         */
-        next();
-        skip('(');
+        next(s1);
+        skip(s1, '(');
         if (tok == TOK_ASM_pop) {
-            next();
+            next(s1);
             if (s1->pack_stack_ptr <= s1->pack_stack) {
             stk_error:
                 tcc_error("out of pack stack");
@@ -1364,11 +1365,11 @@ static void pragma_parse(TCCState *s1)
             val = 0;
             if (tok != ')') {
                 if (tok == TOK_ASM_push) {
-                    next();
+                    next(s1);
                     if (s1->pack_stack_ptr >= s1->pack_stack + PACK_STACK_SIZE - 1)
                         goto stk_error;
                     s1->pack_stack_ptr++;
-                    skip(',');
+                    skip(s1, ',');
                 }
                 if (tok != TOK_CINT) {
                 pack_error:
@@ -1377,16 +1378,16 @@ static void pragma_parse(TCCState *s1)
                 val = tokc.i;
                 if (val < 1 || val > 16 || (val & (val - 1)) != 0)
                     goto pack_error;
-                next();
+                next(s1);
             }
             *s1->pack_stack_ptr = val;
-            skip(')');
+            skip(s1, ')');
         }
     }
 }
 
 /* is_bof is true if first non space token at beginning of file */
-ST_FUNC void preprocess(int is_bof)
+ST_FUNC void preprocess(TCCState *tcc_state, int is_bof)
 {
     TCCState *s1 = tcc_state;
     int i, c, n, saved_parse_flags;
@@ -1396,15 +1397,15 @@ ST_FUNC void preprocess(int is_bof)
     saved_parse_flags = parse_flags;
     parse_flags = PARSE_FLAG_PREPROCESS | PARSE_FLAG_TOK_NUM | 
         PARSE_FLAG_LINEFEED;
-    next_nomacro();
+    next_nomacro(tcc_state);
  redo:
     switch(tok) {
     case TOK_DEFINE:
-        next_nomacro();
-        parse_define();
+        next_nomacro(tcc_state);
+		parse_define(tcc_state);
         break;
     case TOK_UNDEF:
-        next_nomacro();
+        next_nomacro(tcc_state);
         s = define_find(tok);
         /* undefine symbol by putting an invalid name */
         if (s)
@@ -1443,7 +1444,7 @@ ST_FUNC void preprocess(int is_bof)
         } else {
             /* computed #include : either we have only strings or
                we have anything enclosed in '<>' */
-            next();
+            next(tcc_state);
             buf[0] = '\0';
             if (tok == TOK_STR) {
                 while (tok != TOK_LINEFEED) {
@@ -1452,14 +1453,14 @@ ST_FUNC void preprocess(int is_bof)
                         tcc_error("'#include' expects \"FILENAME\" or <FILENAME>");
                     }
                     pstrcat(buf, sizeof(buf), (char *)tokc.cstr->data);
-                    next();
+                    next(tcc_state);
                 }
                 c = '\"';
             } else {
                 int len;
                 while (tok != TOK_LINEFEED) {
                     pstrcat(buf, sizeof(buf), get_tok_str(tok, &tokc));
-                    next();
+                    next(tcc_state);
                 }
                 len = strlen(buf);
                 /* check syntax and remove '<>' */
@@ -1554,12 +1555,12 @@ include_done:
         c = 1;
         goto do_ifdef;
     case TOK_IF:
-        c = expr_preprocess();
+        c = expr_preprocess(tcc_state);
         goto do_if;
     case TOK_IFDEF:
         c = 0;
     do_ifdef:
-        next_nomacro();
+        next_nomacro(tcc_state);
         if (tok < TOK_IDENT)
             tcc_error("invalid argument for '#if%sdef'", c ? "n" : "");
         if (is_bof) {
@@ -1592,7 +1593,7 @@ include_done:
         /* last #if/#elif expression was true: we skip */
         if (c == 1)
             goto skip;
-        c = expr_preprocess();
+        c = expr_preprocess(tcc_state);
         s1->ifdef_stack_ptr[-1] = c;
     test_else:
         if (s1->ifdef_stack_ptr == file->ifdef_stack_ptr + 1)
@@ -1600,7 +1601,7 @@ include_done:
     test_skip:
         if (!(c & 1)) {
         skip:
-            preprocess_skip();
+            preprocess_skip(tcc_state);
             is_bof = 0;
             goto redo;
         }
@@ -1618,17 +1619,17 @@ include_done:
                #ifndef at middle of file */
             file->ifndef_macro = 0;
             while (tok != TOK_LINEFEED)
-                next_nomacro();
+                next_nomacro(tcc_state);
             tok_flags |= TOK_FLAG_ENDIF;
             goto the_end;
         }
         break;
     case TOK_LINE:
-        next();
+        next(tcc_state);
         if (tok != TOK_CINT)
             tcc_error("#line");
         file->line_num = tokc.i - 1; /* the line number will be incremented after */
-        next();
+        next(tcc_state);
         if (tok != TOK_LINEFEED) {
             if (tok != TOK_STR)
                 tcc_error("#line");
@@ -1677,13 +1678,13 @@ include_done:
     }
     /* ignore other preprocess commands or #! for C scripts */
     while (tok != TOK_LINEFEED)
-        next_nomacro();
+        next_nomacro(tcc_state);
  the_end:
     parse_flags = saved_parse_flags;
 }
 
 /* evaluate escape codes in a string. */
-static void parse_escape_string(CString *outstr, const uint8_t *buf, int is_long)
+static void parse_escape_string(TCCState *tcc_state, CString *outstr, const uint8_t *buf, int is_long)
 {
     int c, n;
     const uint8_t *p;
@@ -1757,7 +1758,7 @@ static void parse_escape_string(CString *outstr, const uint8_t *buf, int is_long
                 c = '\v';
                 break;
             case 'e':
-                if (!gnu_ext)
+                if (!tcc_state->gnu_ext)
                     goto invalid_escape;
                 c = 27;
                 break;
@@ -1814,7 +1815,7 @@ static void bn_zero(unsigned int *bn)
 
 /* parse number in null terminated string 'p' and return it in the
    current token */
-static void parse_number(const char *p)
+static void parse_number(TCCState *tcc_state, const char *p)
 {
     int b, t, shift, frac_bits, s, exp_val, ch;
     char *q;
@@ -1835,7 +1836,7 @@ static void parse_number(const char *p)
             q--;
             ch = *p++;
             b = 16;
-        } else if (tcc_ext && (ch == 'b' || ch == 'B')) {
+        } else if (tcc_state->tcc_ext && (ch == 'b' || ch == 'B')) {
             q--;
             ch = *p++;
             b = 2;
@@ -2109,7 +2110,7 @@ static void parse_number(const char *p)
         break;
 
 /* return next token without macro substitution */
-static inline void next_nomacro1(void)
+static inline void next_nomacro1(TCCState *tcc_state)
 {
     int t, c, is_long;
     TokenSym *ts;
@@ -2205,7 +2206,7 @@ maybe_newline:
         if ((tok_flags & TOK_FLAG_BOL) && 
             (parse_flags & PARSE_FLAG_PREPROCESS)) {
             file->buf_ptr = p;
-            preprocess(tok_flags & TOK_FLAG_BOF);
+            preprocess(tcc_state, tok_flags & TOK_FLAG_BOF);
             p = file->buf_ptr;
             goto maybe_newline;
         } else {
@@ -2361,7 +2362,7 @@ maybe_newline:
             
             /* eval the escape (should be done as TOK_PPNUM) */
             cstr_reset(&tokcstr);
-            parse_escape_string(&tokcstr, str.data, is_long);
+            parse_escape_string(tcc_state, &tokcstr, str.data, is_long);
             cstr_free(&str);
 
             if (sep == '\'') {
@@ -2540,7 +2541,7 @@ keep_tok_flags:
 
 /* return next token without macro substitution. Can read input from
    macro_ptr buffer */
-static void next_nomacro_spc(void)
+static void next_nomacro_spc(TCCState *tcc_state)
 {
     if (macro_ptr) {
     redo:
@@ -2553,20 +2554,20 @@ static void next_nomacro_spc(void)
             }
         }
     } else {
-        next_nomacro1();
+        next_nomacro1(tcc_state);
     }
 }
 
-ST_FUNC void next_nomacro(void)
+ST_FUNC void next_nomacro(TCCState *tcc_state)
 {
     do {
-        next_nomacro_spc();
+        next_nomacro_spc(tcc_state);
     } while (is_space(tok));
 }
  
 /* substitute arguments in replacement lists in macro_str by the values in
    args (field d) and return allocated string */
-static int *macro_arg_subst(Sym **nested_list, const int *macro_str, Sym *args)
+static int *macro_arg_subst(TCCState* tcc_state, Sym **nested_list, const int *macro_str, Sym *args)
 {
     int last_tok, t, spc;
     const int *st;
@@ -2619,7 +2620,7 @@ static int *macro_arg_subst(Sym **nested_list, const int *macro_str, Sym *args)
                     /* XXX: test of the ',' is not 100%
                        reliable. should fix it to avoid security
                        problems */
-                    if (gnu_ext && s->type.t &&
+                    if (tcc_state->gnu_ext && s->type.t &&
                         last_tok == TOK_TWOSHARPS && 
                         str.len >= 2 && str.str[str.len - 2] == ',') {
                         if (*st == TOK_PLCHLDR) {
@@ -2643,7 +2644,7 @@ static int *macro_arg_subst(Sym **nested_list, const int *macro_str, Sym *args)
                 } else {
                     /* NOTE: the stream cannot be read when macro
                        substituing an argument */
-                    macro_subst(&str, nested_list, st, NULL);
+                    macro_subst(tcc_state, &str, nested_list, st, NULL);
                 }
             } else {
                 tok_str_add(&str, t);
@@ -2667,7 +2668,7 @@ static char const ab_month_name[12][4] =
    result to (tok_str,tok_len). 'nested_list' is the list of all
    macros we got inside to avoid recursing. Return non zero if no
    substitution needs to be done */
-static int macro_subst_tok(TokenString *tok_str,
+static int macro_subst_tok(TCCState* tcc_state, TokenString *tok_str,
                            Sym **nested_list, Sym *s, struct macro_level **can_read_stream)
 {
     Sym *args, *sa, *sa1;
@@ -2764,8 +2765,8 @@ static int macro_subst_tok(TokenString *tok_str,
                 return -1;
                     
             /* argument macro */
-            next_nomacro();
-            next_nomacro();
+            next_nomacro(tcc_state);
+            next_nomacro(tcc_state);
             args = NULL;
             sa = s->next;
             /* NOTE: empty args are allowed, except if no args */
@@ -2791,7 +2792,7 @@ static int macro_subst_tok(TokenString *tok_str,
                         tok = ' ';
                     if (!check_space(tok, &spc))
                         tok_str_add2(&str, tok, &tokc);
-                    next_nomacro_spc();
+					next_nomacro_spc(tcc_state);
                 }
                 if (!str.len)
                     tok_str_add(&str, TOK_PLCHLDR);
@@ -2803,14 +2804,14 @@ static int macro_subst_tok(TokenString *tok_str,
                 if (tok == ')') {
                     /* special case for gcc var args: add an empty
                        var arg argument if it is omitted */
-                    if (sa && sa->type.t && gnu_ext)
+                    if (sa && sa->type.t && tcc_state->gnu_ext)
                         continue;
                     else
                         break;
                 }
                 if (tok != ',')
                     expect(",");
-                next_nomacro();
+                next_nomacro(tcc_state);
             }
             if (sa) {
                 tcc_error("macro '%s' used with too few args",
@@ -2818,7 +2819,7 @@ static int macro_subst_tok(TokenString *tok_str,
             }
 
             /* now subst each arg */
-            mstr = macro_arg_subst(nested_list, mstr, args);
+            mstr = macro_arg_subst(tcc_state, nested_list, mstr, args);
             /* free memory */
             sa = args;
             while (sa) {
@@ -2830,7 +2831,7 @@ static int macro_subst_tok(TokenString *tok_str,
             mstr_allocated = 1;
         }
         sym_push2(nested_list, s->v, 0, 0);
-        macro_subst(tok_str, nested_list, mstr, can_read_stream);
+        macro_subst(tcc_state, tok_str, nested_list, mstr, can_read_stream);
         /* pop nested defined symbol */
         sa1 = *nested_list;
         *nested_list = sa1->prev;
@@ -2843,7 +2844,7 @@ static int macro_subst_tok(TokenString *tok_str,
 
 /* handle the '##' operator. Return NULL if no '##' seen. Otherwise
    return the resulting string (which must be freed). */
-static inline int *macro_twosharps(const int *macro_str)
+static inline int *macro_twosharps(TCCState *tcc_state, const int *macro_str)
 {
     const int *ptr;
     int t;
@@ -2897,7 +2898,7 @@ static inline int *macro_twosharps(const int *macro_str)
                 tcc_open_bf(tcc_state, ":paste:", cstr.size);
                 memcpy(file->buffer, cstr.data, cstr.size);
                 for (;;) {
-                    next_nomacro1();
+                    next_nomacro1(tcc_state);
                     if (0 == *file->buf_ptr)
                         break;
                     tok_str_add2(&macro_str1, tok, &tokc);
@@ -2923,7 +2924,7 @@ static inline int *macro_twosharps(const int *macro_str)
 /* do macro substitution of macro_str and add result to
    (tok_str,tok_len). 'nested_list' is the list of all macros we got
    inside to avoid recursing. */
-static void macro_subst(TokenString *tok_str, Sym **nested_list, 
+static void macro_subst(TCCState *tcc_state, TokenString *tok_str, Sym **nested_list, 
                         const int *macro_str, struct macro_level ** can_read_stream)
 {
     Sym *s;
@@ -2936,7 +2937,7 @@ static void macro_subst(TokenString *tok_str, Sym **nested_list,
     
     /* first scan for '##' operator handling */
     ptr = macro_str;
-    macro_str1 = macro_twosharps(ptr);
+	macro_str1 = macro_twosharps(tcc_state, ptr);
 
     if (macro_str1) 
         ptr = macro_str1;
@@ -2970,7 +2971,7 @@ static void macro_subst(TokenString *tok_str, Sym **nested_list,
                 ml.prev = *can_read_stream, *can_read_stream = &ml;
             macro_ptr = (int *)ptr;
             tok = t;
-            ret = macro_subst_tok(tok_str, nested_list, s, can_read_stream);
+            ret = macro_subst_tok(tcc_state, tok_str, nested_list, s, can_read_stream);
             ptr = (int *)macro_ptr;
             macro_ptr = ml.p;
             if (can_read_stream && *can_read_stream == &ml)
@@ -2995,7 +2996,7 @@ static void macro_subst(TokenString *tok_str, Sym **nested_list,
 }
 
 /* return next token with macro substitution */
-ST_FUNC void next(void)
+ST_FUNC void next(TCCState *tcc_state)
 {
     Sym *nested_list, *s;
     TokenString str;
@@ -3003,9 +3004,9 @@ ST_FUNC void next(void)
 
  redo:
     if (parse_flags & PARSE_FLAG_SPACES)
-        next_nomacro_spc();
+		next_nomacro_spc(tcc_state);
     else
-        next_nomacro();
+        next_nomacro(tcc_state);
     if (!macro_ptr) {
         /* if not reading from macro substituted string, then try
            to substitute macros */
@@ -3017,7 +3018,7 @@ ST_FUNC void next(void)
                 tok_str_new(&str);
                 nested_list = NULL;
                 ml = NULL;
-                if (macro_subst_tok(&str, &nested_list, s, &ml) == 0) {
+                if (macro_subst_tok(tcc_state, &str, &nested_list, s, &ml) == 0) {
                     /* substitution done, NOTE: maybe empty */
                     tok_str_add(&str, 0);
                     macro_ptr = str.str;
@@ -3048,7 +3049,7 @@ ST_FUNC void next(void)
     /* convert preprocessor tokens into C tokens */
     if (tok == TOK_PPNUM &&
         (parse_flags & PARSE_FLAG_TOK_NUM)) {
-        parse_number((char *)tokc.cstr->data);
+        parse_number(tcc_state, (char *)tokc.cstr->data);
     }
 }
 
@@ -3142,7 +3143,7 @@ ST_FUNC int tcc_preprocess(TCCState *s1)
     iptr = s1->include_stack_ptr;
 
     for (;;) {
-        next();
+        next(s1);
         if (tok == TOK_EOF) {
             break;
         } else if (file != file_ref) {

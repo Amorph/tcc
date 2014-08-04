@@ -728,6 +728,17 @@ struct TCCState {
     int do_bench; /* option -bench */
     int gen_deps; /* option -MD  */
     char *deps_outfile; /* option -MF */
+
+	//move out from global
+	/* use GNU C extensions */
+	int gnu_ext;
+	/* use Tiny C extensions */
+	int tcc_ext;
+
+#ifdef MEM_DEBUG
+	ST_DATA int mem_cur_size;
+	ST_DATA int mem_max_size;
+#endif
 };
 
 /* The current value can be: */
@@ -1018,18 +1029,6 @@ static inline int toup(int c)
 
 /* ------------ libtcc.c ------------ */
 
-/* use GNU C extensions */
-ST_DATA int gnu_ext;
-/* use Tiny C extensions */
-ST_DATA int tcc_ext;
-/* XXX: get rid of this ASAP */
-ST_DATA struct TCCState *tcc_state;
-
-#ifdef MEM_DEBUG
-ST_DATA int mem_cur_size;
-ST_DATA int mem_max_size;
-#endif
-
 #define AFF_PRINT_ERROR     0x0001 /* print error if file not found */
 #define AFF_REFERENCED_DLL  0x0002 /* load a referenced dll from another dll */
 #define AFF_PREPROCESS      0x0004 /* preprocess file */
@@ -1071,9 +1070,9 @@ ST_FUNC void *section_ptr_add(Section *sec, unsigned long size);
 ST_FUNC void section_reserve(Section *sec, unsigned long size);
 ST_FUNC Section *find_section(TCCState *s1, const char *name);
 
-ST_FUNC void put_extern_sym2(Sym *sym, Section *section, addr_t value, unsigned long size, int can_add_underscore);
-ST_FUNC void put_extern_sym(Sym *sym, Section *section, addr_t value, unsigned long size);
-ST_FUNC void greloc(Section *s, Sym *sym, unsigned long offset, int type);
+ST_FUNC void put_extern_sym2(TCCState *tcc_state, Sym *sym, Section *section, addr_t value, unsigned long size, int can_add_underscore);
+ST_FUNC void put_extern_sym(TCCState *tcc_state, Sym *sym, Section *section, addr_t value, unsigned long size);
+ST_FUNC void greloc(TCCState *tcc_state, Section *s, Sym *sym, unsigned long offset, int type);
 
 ST_INLN void sym_free(Sym *sym);
 ST_FUNC Sym *sym_push2(Sym **ps, int v, int t, long c);
@@ -1138,18 +1137,18 @@ ST_INLN void define_push(int v, int macro_type, int *str, Sym *first_arg);
 ST_FUNC void define_undef(Sym *s);
 ST_INLN Sym *define_find(int v);
 ST_FUNC void free_defines(Sym *b);
-ST_FUNC Sym *label_find(int v);
-ST_FUNC Sym *label_push(Sym **ptop, int v, int flags);
-ST_FUNC void label_pop(Sym **ptop, Sym *slast);
-ST_FUNC void parse_define(void);
-ST_FUNC void preprocess(int is_bof);
-ST_FUNC void next_nomacro(void);
-ST_FUNC void next(void);
+ST_FUNC Sym *label_find(TCCState *tcc_state, int v);
+ST_FUNC Sym *label_push(TCCState *tcc_state, Sym **ptop, int v, int flags);
+ST_FUNC void label_pop(TCCState *tcc_state, Sym **ptop, Sym *slast);
+ST_FUNC void parse_define(TCCState *tcc_state);
+ST_FUNC void preprocess(TCCState *tcc_state, int is_bof);
+ST_FUNC void next_nomacro(TCCState *tcc_state);
+ST_FUNC void next(TCCState* tcc_state);
 ST_INLN void unget_tok(int last_tok);
 ST_FUNC void preprocess_init(TCCState *s1);
 ST_FUNC void preprocess_new(void);
 ST_FUNC int tcc_preprocess(TCCState *s1);
-ST_FUNC void skip(int c);
+ST_FUNC void skip(TCCState* tcc_state, int c);
 ST_FUNC NORETURN void expect(const char *msg);
 
 /* ------------ tccgen.c ------------ */
@@ -1195,44 +1194,44 @@ ST_DATA char *funcname;
 
 ST_INLN int is_float(int t);
 ST_FUNC int ieee_finite(double d);
-ST_FUNC void test_lvalue(void);
+ST_FUNC void test_lvalue(TCCState* tcc_state);
 ST_FUNC void swap(int *p, int *q);
-ST_FUNC void vpushi(int v);
+ST_FUNC void vpushi(TCCState* tcc_state, int v);
 ST_FUNC Sym *external_global_sym(int v, CType *type, int r);
-ST_FUNC void vset(CType *type, int r, int v);
-ST_FUNC void vswap(void);
-ST_FUNC void vpush_global_sym(CType *type, int v);
+ST_FUNC void vset(TCCState* tcc_state, CType *type, int r, int v);
+ST_FUNC void vswap(TCCState* tcc_state);
+ST_FUNC void vpush_global_sym(TCCState* tcc_state, CType *type, int v);
 ST_FUNC void vrote(SValue *e, int n);
 ST_FUNC void vrott(int n);
 ST_FUNC void vrotb(int n);
 #ifdef TCC_TARGET_ARM
-ST_FUNC int get_reg_ex(int rc, int rc2);
-ST_FUNC void lexpand_nr(void);
+ST_FUNC int get_reg_ex(TCCState *tcc_state, int rc, int rc2);
+ST_FUNC void lexpand_nr(TCCState *tcc_state);
 #endif
-ST_FUNC void vpushv(SValue *v);
-ST_FUNC void save_reg(int r);
-ST_FUNC int get_reg(int rc);
-ST_FUNC void save_regs(int n);
-ST_FUNC int gv(int rc);
-ST_FUNC void gv2(int rc1, int rc2);
-ST_FUNC void vpop(void);
-ST_FUNC void gen_op(int op);
+ST_FUNC void vpushv(TCCState* tcc_state, SValue *v);
+ST_FUNC void save_reg(TCCState* tcc_state, int r);
+ST_FUNC int get_reg(TCCState* tcc_state, int rc);
+ST_FUNC void save_regs(TCCState* tcc_state, int n);
+ST_FUNC int gv(TCCState* tcc_state, int rc);
+ST_FUNC void gv2(TCCState* tcc_state, int rc1, int rc2);
+ST_FUNC void vpop(TCCState* tcc_state);
+ST_FUNC void gen_op(TCCState* tcc_state, int op);
 ST_FUNC int type_size(CType *type, int *a);
 ST_FUNC void mk_pointer(CType *type);
-ST_FUNC void vstore(void);
-ST_FUNC void inc(int post, int c);
-ST_FUNC void parse_asm_str(CString *astr);
+ST_FUNC void vstore(TCCState* tcc_state);
+ST_FUNC void inc(TCCState* tcc_state, int post, int c);
+ST_FUNC void parse_asm_str(TCCState* tcc_state, CString *astr);
 ST_FUNC int lvalue_type(int t);
-ST_FUNC void indir(void);
-ST_FUNC void unary(void);
-ST_FUNC void expr_prod(void);
-ST_FUNC void expr_sum(void);
-ST_FUNC void gexpr(void);
-ST_FUNC int expr_const(void);
-ST_FUNC void gen_inline_functions(void);
-ST_FUNC void decl(int l);
+ST_FUNC void indir(TCCState* tcc_state);
+ST_FUNC void unary(TCCState* tcc_state);
+ST_FUNC void expr_prod(TCCState* tcc_state);
+ST_FUNC void expr_sum(TCCState* tcc_state);
+ST_FUNC void gexpr(TCCState* tcc_state);
+ST_FUNC int expr_const(TCCState* tcc_state);
+ST_FUNC void gen_inline_functions(TCCState* tcc_state);
+ST_FUNC void decl(TCCState* tcc_state, int l);
 #if defined CONFIG_TCC_BCHECK || defined TCC_TARGET_C67
-ST_FUNC Sym *get_sym_ref(CType *type, Section *sec, unsigned long offset, unsigned long size);
+ST_FUNC Sym *get_sym_ref(TCCState *tcc_state, CType *type, Section *sec, unsigned long offset, unsigned long size);
 #endif
 #if defined TCC_TARGET_X86_64 && !defined TCC_TARGET_PE
 ST_FUNC int classify_x86_64_va_arg(CType *ty);
@@ -1258,12 +1257,12 @@ ST_FUNC Section *new_symtab(TCCState *s1, const char *symtab_name, int sh_type, 
 
 ST_FUNC int put_elf_str(Section *s, const char *sym);
 ST_FUNC int put_elf_sym(Section *s, addr_t value, unsigned long size, int info, int other, int shndx, const char *name);
-ST_FUNC int add_elf_sym(Section *s, addr_t value, unsigned long size, int info, int other, int sh_num, const char *name);
+ST_FUNC int add_elf_sym(TCCState* tcc_state, Section *s, addr_t value, unsigned long size, int info, int other, int sh_num, const char *name);
 ST_FUNC int find_elf_sym(Section *s, const char *name);
-ST_FUNC void put_elf_reloc(Section *symtab, Section *s, unsigned long offset, int type, int symbol);
+ST_FUNC void put_elf_reloc(TCCState* tcc_state, Section *symtab, Section *s, unsigned long offset, int type, int symbol);
 
 ST_FUNC void put_stabs(const char *str, int type, int other, int desc, unsigned long value);
-ST_FUNC void put_stabs_r(const char *str, int type, int other, int desc, unsigned long value, Section *sec, int sym_index);
+ST_FUNC void put_stabs_r(TCCState* tcc_state, const char *str, int type, int other, int desc, unsigned long value, Section *sec, int sym_index);
 ST_FUNC void put_stabn(int type, int other, int desc, int value);
 ST_FUNC void put_stabd(int type, int other, int desc);
 
@@ -1298,31 +1297,31 @@ ST_FUNC int handle_eob(void);
 
 ST_DATA const int reg_classes[NB_REGS];
 
-ST_FUNC void gsym_addr(int t, int a);
-ST_FUNC void gsym(int t);
-ST_FUNC void load(int r, SValue *sv);
-ST_FUNC void store(int r, SValue *v);
+ST_FUNC void gsym_addr(TCCState *tcc_state, int t, int a);
+ST_FUNC void gsym(TCCState *tcc_state, int t);
+ST_FUNC void load(TCCState *tcc_state, int r, SValue *sv);
+ST_FUNC void store(TCCState *tcc_state, int r, SValue *v);
 ST_FUNC int gfunc_sret(CType *vt, int variadic, CType *ret, int *align);
-ST_FUNC void gfunc_call(int nb_args);
-ST_FUNC void gfunc_prolog(CType *func_type);
-ST_FUNC void gfunc_epilog(void);
-ST_FUNC int gjmp(int t);
-ST_FUNC void gjmp_addr(int a);
-ST_FUNC int gtst(int inv, int t);
-ST_FUNC void gen_opi(int op);
-ST_FUNC void gen_opf(int op);
-ST_FUNC void gen_cvt_ftoi(int t);
-ST_FUNC void gen_cvt_ftof(int t);
-ST_FUNC void ggoto(void);
+ST_FUNC void gfunc_call(TCCState* tcc_state, int nb_args);
+ST_FUNC void gfunc_prolog(TCCState* tcc_state, CType *func_type);
+ST_FUNC void gfunc_epilog(TCCState* tcc_state);
+ST_FUNC int gjmp(TCCState *tcc_state, int t);
+ST_FUNC void gjmp_addr(TCCState *tcc_state, int a);
+ST_FUNC int gtst(TCCState* tcc_state, int inv, int t);
+ST_FUNC void gen_opi(TCCState* tcc_state, int op);
+ST_FUNC void gen_opf(TCCState* tcc_state, int op);
+ST_FUNC void gen_cvt_ftoi(TCCState* tcc_state, int t);
+ST_FUNC void gen_cvt_ftof(TCCState* tcc_state, int t);
+ST_FUNC void ggoto(TCCState* tcc_state);
 #ifndef TCC_TARGET_C67
 ST_FUNC void o(unsigned int c);
 #endif
 #ifndef TCC_TARGET_ARM
-ST_FUNC void gen_cvt_itof(int t);
+ST_FUNC void gen_cvt_itof(TCCState* tcc_state, int t);
 #endif
-ST_FUNC void gen_vla_sp_save(int addr);
-ST_FUNC void gen_vla_sp_restore(int addr);
-ST_FUNC void gen_vla_alloc(CType *type, int align);
+ST_FUNC void gen_vla_sp_save(TCCState* tcc_state, int addr);
+ST_FUNC void gen_vla_sp_restore(TCCState* tcc_state, int addr);
+ST_FUNC void gen_vla_alloc(TCCState* tcc_state, CType *type, int align);
 
 /* ------------ i386-gen.c ------------ */
 #if defined TCC_TARGET_I386 || defined TCC_TARGET_X86_64
@@ -1330,19 +1329,19 @@ ST_FUNC void g(int c);
 ST_FUNC int oad(int c, int s);
 ST_FUNC void gen_le16(int c);
 ST_FUNC void gen_le32(int c);
-ST_FUNC void gen_addr32(int r, Sym *sym, int c);
-ST_FUNC void gen_addrpc32(int r, Sym *sym, int c);
+ST_FUNC void gen_addr32(TCCState *tcc_state, int r, Sym *sym, int c);
+ST_FUNC void gen_addrpc32(TCCState *tcc_state, int r, Sym *sym, int c);
 #endif
 
 #ifdef CONFIG_TCC_BCHECK
-ST_FUNC void gen_bounded_ptr_add(void);
-ST_FUNC void gen_bounded_ptr_deref(void);
+ST_FUNC void gen_bounded_ptr_add(TCCState* tcc_state);
+ST_FUNC void gen_bounded_ptr_deref(TCCState* tcc_state);
 #endif
 
 /* ------------ x86_64-gen.c ------------ */
 #ifdef TCC_TARGET_X86_64
-ST_FUNC void gen_addr64(int r, Sym *sym, int64_t c);
-ST_FUNC void gen_opl(int op);
+ST_FUNC void gen_addr64(TCCState* tcc_state, int r, Sym *sym, int64_t c);
+ST_FUNC void gen_opl(TCCState* tcc_state, int op);
 #endif
 
 /* ------------ arm-gen.c ------------ */
@@ -1352,7 +1351,7 @@ ST_FUNC char *default_elfinterp(struct TCCState *s);
 #endif
 ST_FUNC void arm_init(struct TCCState *s);
 ST_FUNC uint32_t encbranch(int pos, int addr, int fail);
-ST_FUNC void gen_cvt_itof1(int t);
+ST_FUNC void gen_cvt_itof1(struct TCCState *tcc_state, int t);
 #endif
 
 /* ------------ c67-gen.c ------------ */
@@ -1367,19 +1366,19 @@ ST_FUNC int tcc_load_coff(TCCState * s1, int fd);
 #endif
 
 /* ------------ tccasm.c ------------ */
-ST_FUNC void asm_instr(void);
-ST_FUNC void asm_global_instr(void);
+ST_FUNC void asm_instr(TCCState* tcc_state);
+ST_FUNC void asm_global_instr(TCCState *tcc_state);
 #ifdef CONFIG_TCC_ASM
 ST_FUNC int find_constraint(ASMOperand *operands, int nb_operands, const char *name, const char **pp);
 ST_FUNC void asm_expr(TCCState *s1, ExprValue *pe);
 ST_FUNC int asm_int_expr(TCCState *s1);
 ST_FUNC int tcc_assemble(TCCState *s1, int do_preprocess);
 /* ------------ i386-asm.c ------------ */
-ST_FUNC void gen_expr32(ExprValue *pe);
+ST_FUNC void gen_expr32(TCCState *tcc_state, ExprValue *pe);
 ST_FUNC void asm_opcode(TCCState *s1, int opcode);
 ST_FUNC void asm_compute_constraints(ASMOperand *operands, int nb_operands, int nb_outputs, const uint8_t *clobber_regs, int *pout_reg);
 ST_FUNC void subst_asm_operand(CString *add_str, SValue *sv, int modifier);
-ST_FUNC void asm_gen_code(ASMOperand *operands, int nb_operands, int nb_outputs, int is_output, uint8_t *clobber_regs, int out_reg);
+ST_FUNC void asm_gen_code(TCCState *tcc_state, ASMOperand *operands, int nb_operands, int nb_outputs, int is_output, uint8_t *clobber_regs, int out_reg);
 ST_FUNC void asm_clobber(uint8_t *clobber_regs, const char *str);
 #endif
 
@@ -1388,9 +1387,9 @@ ST_FUNC void asm_clobber(uint8_t *clobber_regs, const char *str);
 ST_FUNC int pe_load_file(struct TCCState *s1, const char *filename, int fd);
 ST_FUNC int pe_output_file(TCCState * s1, const char *filename);
 ST_FUNC int pe_putimport(TCCState *s1, int dllindex, const char *name, addr_t value);
-ST_FUNC SValue *pe_getimport(SValue *sv, SValue *v2);
+ST_FUNC SValue *pe_getimport(TCCState *s1, SValue *sv, SValue *v2);
 #ifdef TCC_TARGET_X86_64
-ST_FUNC void pe_add_unwind_data(unsigned start, unsigned end, unsigned stack);
+ST_FUNC void pe_add_unwind_data(TCCState *tcc_state, unsigned start, unsigned end, unsigned stack);
 #endif
 /* symbol properties stored in Elf32_Sym->st_other */
 # define ST_PE_EXPORT 0x10
