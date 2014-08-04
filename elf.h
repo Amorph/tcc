@@ -1,20 +1,20 @@
 /* This file defines standard ELF types, structures, and macros.
-   Copyright (C) 1995-2012 Free Software Foundation, Inc.
-   This file is part of the GNU C Library.
+Copyright (C) 1995-2012 Free Software Foundation, Inc.
+This file is part of the GNU C Library.
 
-   The GNU C Library is free software; you can redistribute it and/or
-   modify it under the terms of the GNU Lesser General Public
-   License as published by the Free Software Foundation; either
-   version 2.1 of the License, or (at your option) any later version.
+The GNU C Library is free software; you can redistribute it and/or
+modify it under the terms of the GNU Lesser General Public
+License as published by the Free Software Foundation; either
+version 2.1 of the License, or (at your option) any later version.
 
-   The GNU C Library is distributed in the hope that it will be useful,
-   but WITHOUT ANY WARRANTY; without even the implied warranty of
-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-   Lesser General Public License for more details.
+The GNU C Library is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+Lesser General Public License for more details.
 
-   You should have received a copy of the GNU Lesser General Public
-   License along with the GNU C Library; if not, see
-   <http://www.gnu.org/licenses/>.  */
+You should have received a copy of the GNU Lesser General Public
+License along with the GNU C Library; if not, see
+<http://www.gnu.org/licenses/>.  */
 
 #ifndef _ELF_H
 #define	_ELF_H 1
@@ -77,43 +77,43 @@ typedef Elf64_Half Elf64_Versym;
 
 typedef struct
 {
-  unsigned char	e_ident[EI_NIDENT];	/* Magic number and other info */
-  Elf32_Half	e_type;			/* Object file type */
-  Elf32_Half	e_machine;		/* Architecture */
-  Elf32_Word	e_version;		/* Object file version */
-  Elf32_Addr	e_entry;		/* Entry point virtual address */
-  Elf32_Off	e_phoff;		/* Program header table file offset */
-  Elf32_Off	e_shoff;		/* Section header table file offset */
-  Elf32_Word	e_flags;		/* Processor-specific flags */
-  Elf32_Half	e_ehsize;		/* ELF header size in bytes */
-  Elf32_Half	e_phentsize;		/* Program header table entry size */
-  Elf32_Half	e_phnum;		/* Program header table entry count */
-  Elf32_Half	e_shentsize;		/* Section header table entry size */
-  Elf32_Half	e_shnum;		/* Section header table entry count */
-  Elf32_Half	e_shstrndx;		/* Section header string table index */
+	unsigned char	e_ident[EI_NIDENT];	/* Magic number and other info */
+	Elf32_Half	e_type;			/* Object file type */
+	Elf32_Half	e_machine;		/* Architecture */
+	Elf32_Word	e_version;		/* Object file version */
+	Elf32_Addr	e_entry;		/* Entry point virtual address */
+	Elf32_Off	e_phoff;		/* Program header table file offset */
+	Elf32_Off	e_shoff;		/* Section header table file offset */
+	Elf32_Word	e_flags;		/* Processor-specific flags */
+	Elf32_Half	e_ehsize;		/* ELF header size in bytes */
+	Elf32_Half	e_phentsize;		/* Program header table entry size */
+	Elf32_Half	e_phnum;		/* Program header table entry count */
+	Elf32_Half	e_shentsize;		/* Section header table entry size */
+	Elf32_Half	e_shnum;		/* Section header table entry count */
+	Elf32_Half	e_shstrndx;		/* Section header string table index */
 } Elf32_Ehdr;
 
 typedef struct
 {
-  unsigned char	e_ident[EI_NIDENT];	/* Magic number and other info */
-  Elf64_Half	e_type;			/* Object file type */
-  Elf64_Half	e_machine;		/* Architecture */
-  Elf64_Word	e_version;		/* Object file version */
-  Elf64_Addr	e_entry;		/* Entry point virtual address */
-  Elf64_Off	e_phoff;		/* Program header table file offset */
-  Elf64_Off	e_shoff;		/* Section header table file offset */
-  Elf64_Word	e_flags;		/* Processor-specific flags */
-  Elf64_Half	e_ehsize;		/* ELF header size in bytes */
-  Elf64_Half	e_phentsize;		/* Program header table entry size */
-  Elf64_Half	e_phnum;		/* Program header table entry count */
-  Elf64_Half	e_shentsize;		/* Section header table entry size */
-  Elf64_Half	e_shnum;		/* Section header table entry count */
-  Elf64_Half	e_shstrndx;		/* Section header string table index */
+	unsigned char	e_ident[EI_NIDENT];	/* Magic number and other info */
+	Elf64_Half	e_type;			/* Object file type */
+	Elf64_Half	e_machine;		/* Architecture */
+	Elf64_Word	e_version;		/* Object file version */
+	Elf64_Addr	e_entry;		/* Entry point virtual address */
+	Elf64_Off	e_phoff;		/* Program header table file offset */
+	Elf64_Off	e_shoff;		/* Section header table file offset */
+	Elf64_Word	e_flags;		/* Processor-specific flags */
+	Elf64_Half	e_ehsize;		/* ELF header size in bytes */
+	Elf64_Half	e_phentsize;		/* Program header table entry size */
+	Elf64_Half	e_phnum;		/* Program header table entry count */
+	Elf64_Half	e_shentsize;		/* Section header table entry size */
+	Elf64_Half	e_shnum;		/* Section header table entry count */
+	Elf64_Half	e_shstrndx;		/* Section header string table index */
 } Elf64_Ehdr;
 
 /* Fields in the e_ident array.  The EI_* macros are indices into the
-   array.  The macros under each EI_* macro are the values the byte
-   may have.  */
+array.  The macros under each EI_* macro are the values the byte
+may have.  */
 
 #define EI_MAG0		0		/* File identification byte 0 index */
 #define ELFMAG0		0x7f		/* Magic number byte 0 */
@@ -144,7 +144,7 @@ typedef struct
 #define ELFDATANUM	3
 
 #define EI_VERSION	6		/* File version byte index */
-					/* Value must be EV_CURRENT */
+/* Value must be EV_CURRENT */
 
 #define EI_OSABI	7		/* OS ABI identification */
 #define ELFOSABI_NONE		0	/* UNIX System V ABI */
@@ -266,8 +266,8 @@ typedef struct
 #define EM_NUM		192
 
 /* If it is necessary to assign new unofficial EM_* values, please
-   pick large random numbers (0x8523, 0xa7f2, etc.) to minimize the
-   chances of collision with official or non-GNU unofficial values.  */
+pick large random numbers (0x8523, 0xa7f2, etc.) to minimize the
+chances of collision with official or non-GNU unofficial values.  */
 
 #define EM_ALPHA	0x9026
 #define EM_C60		0x9c60
@@ -282,30 +282,30 @@ typedef struct
 
 typedef struct
 {
-  Elf32_Word	sh_name;		/* Section name (string tbl index) */
-  Elf32_Word	sh_type;		/* Section type */
-  Elf32_Word	sh_flags;		/* Section flags */
-  Elf32_Addr	sh_addr;		/* Section virtual addr at execution */
-  Elf32_Off	sh_offset;		/* Section file offset */
-  Elf32_Word	sh_size;		/* Section size in bytes */
-  Elf32_Word	sh_link;		/* Link to another section */
-  Elf32_Word	sh_info;		/* Additional section information */
-  Elf32_Word	sh_addralign;		/* Section alignment */
-  Elf32_Word	sh_entsize;		/* Entry size if section holds table */
+	Elf32_Word	sh_name;		/* Section name (string tbl index) */
+	Elf32_Word	sh_type;		/* Section type */
+	Elf32_Word	sh_flags;		/* Section flags */
+	Elf32_Addr	sh_addr;		/* Section virtual addr at execution */
+	Elf32_Off	sh_offset;		/* Section file offset */
+	Elf32_Word	sh_size;		/* Section size in bytes */
+	Elf32_Word	sh_link;		/* Link to another section */
+	Elf32_Word	sh_info;		/* Additional section information */
+	Elf32_Word	sh_addralign;		/* Section alignment */
+	Elf32_Word	sh_entsize;		/* Entry size if section holds table */
 } Elf32_Shdr;
 
 typedef struct
 {
-  Elf64_Word	sh_name;		/* Section name (string tbl index) */
-  Elf64_Word	sh_type;		/* Section type */
-  Elf64_Xword	sh_flags;		/* Section flags */
-  Elf64_Addr	sh_addr;		/* Section virtual addr at execution */
-  Elf64_Off	sh_offset;		/* Section file offset */
-  Elf64_Xword	sh_size;		/* Section size in bytes */
-  Elf64_Word	sh_link;		/* Link to another section */
-  Elf64_Word	sh_info;		/* Additional section information */
-  Elf64_Xword	sh_addralign;		/* Section alignment */
-  Elf64_Xword	sh_entsize;		/* Entry size if section holds table */
+	Elf64_Word	sh_name;		/* Section name (string tbl index) */
+	Elf64_Word	sh_type;		/* Section type */
+	Elf64_Xword	sh_flags;		/* Section flags */
+	Elf64_Addr	sh_addr;		/* Section virtual addr at execution */
+	Elf64_Off	sh_offset;		/* Section file offset */
+	Elf64_Xword	sh_size;		/* Section size in bytes */
+	Elf64_Word	sh_link;		/* Link to another section */
+	Elf64_Word	sh_info;		/* Additional section information */
+	Elf64_Xword	sh_addralign;		/* Section alignment */
+	Elf64_Xword	sh_entsize;		/* Entry size if section holds table */
 } Elf64_Shdr;
 
 /* Special section indices.  */
@@ -314,9 +314,9 @@ typedef struct
 #define SHN_LORESERVE	0xff00		/* Start of reserved indices */
 #define SHN_LOPROC	0xff00		/* Start of processor-specific */
 #define SHN_BEFORE	0xff00		/* Order section before all others
-					   (Solaris).  */
+(Solaris).  */
 #define SHN_AFTER	0xff01		/* Order section after all others
-					   (Solaris).  */
+(Solaris).  */
 #define SHN_HIPROC	0xff1f		/* End of processor-specific */
 #define SHN_LOOS	0xff20		/* Start of OS-specific */
 #define SHN_HIOS	0xff3f		/* End of OS-specific */
@@ -374,15 +374,15 @@ typedef struct
 #define SHF_INFO_LINK	     (1 << 6)	/* `sh_info' contains SHT index */
 #define SHF_LINK_ORDER	     (1 << 7)	/* Preserve order after combining */
 #define SHF_OS_NONCONFORMING (1 << 8)	/* Non-standard OS specific handling
-					   required */
+required */
 #define SHF_GROUP	     (1 << 9)	/* Section is member of a group.  */
 #define SHF_TLS		     (1 << 10)	/* Section hold thread-local data.  */
 #define SHF_MASKOS	     0x0ff00000	/* OS-specific.  */
 #define SHF_MASKPROC	     0xf0000000	/* Processor-specific */
 #define SHF_ORDERED	     (1 << 30)	/* Special ordering requirement
-					   (Solaris).  */
+(Solaris).  */
 #define SHF_EXCLUDE	     (1 << 31)	/* Section is excluded unless
-					   referenced or allocated (Solaris).*/
+referenced or allocated (Solaris).*/
 
 /* Section group handling.  */
 #define GRP_COMDAT	0x1		/* Mark group as COMDAT.  */
@@ -391,37 +391,37 @@ typedef struct
 
 typedef struct
 {
-  Elf32_Word	st_name;		/* Symbol name (string tbl index) */
-  Elf32_Addr	st_value;		/* Symbol value */
-  Elf32_Word	st_size;		/* Symbol size */
-  unsigned char	st_info;		/* Symbol type and binding */
-  unsigned char	st_other;		/* Symbol visibility */
-  Elf32_Section	st_shndx;		/* Section index */
+	Elf32_Word	st_name;		/* Symbol name (string tbl index) */
+	Elf32_Addr	st_value;		/* Symbol value */
+	Elf32_Word	st_size;		/* Symbol size */
+	unsigned char	st_info;		/* Symbol type and binding */
+	unsigned char	st_other;		/* Symbol visibility */
+	Elf32_Section	st_shndx;		/* Section index */
 } Elf32_Sym;
 
 typedef struct
 {
-  Elf64_Word	st_name;		/* Symbol name (string tbl index) */
-  unsigned char	st_info;		/* Symbol type and binding */
-  unsigned char st_other;		/* Symbol visibility */
-  Elf64_Section	st_shndx;		/* Section index */
-  Elf64_Addr	st_value;		/* Symbol value */
-  Elf64_Xword	st_size;		/* Symbol size */
+	Elf64_Word	st_name;		/* Symbol name (string tbl index) */
+	unsigned char	st_info;		/* Symbol type and binding */
+	unsigned char st_other;		/* Symbol visibility */
+	Elf64_Section	st_shndx;		/* Section index */
+	Elf64_Addr	st_value;		/* Symbol value */
+	Elf64_Xword	st_size;		/* Symbol size */
 } Elf64_Sym;
 
 /* The syminfo section if available contains additional information about
-   every dynamic symbol.  */
+every dynamic symbol.  */
 
 typedef struct
 {
-  Elf32_Half si_boundto;		/* Direct bindings, symbol bound to */
-  Elf32_Half si_flags;			/* Per symbol flags */
+	Elf32_Half si_boundto;		/* Direct bindings, symbol bound to */
+	Elf32_Half si_flags;			/* Per symbol flags */
 } Elf32_Syminfo;
 
 typedef struct
 {
-  Elf64_Half si_boundto;		/* Direct bindings, symbol bound to */
-  Elf64_Half si_flags;			/* Per symbol flags */
+	Elf64_Half si_boundto;		/* Direct bindings, symbol bound to */
+	Elf64_Half si_flags;			/* Per symbol flags */
 } Elf64_Syminfo;
 
 /* Possible values for si_boundto.  */
@@ -434,7 +434,7 @@ typedef struct
 #define SYMINFO_FLG_PASSTHRU	0x0002	/* Pass-thru symbol for translator */
 #define SYMINFO_FLG_COPY	0x0004	/* Symbol is a copy-reloc */
 #define SYMINFO_FLG_LAZYLOAD	0x0008	/* Symbol bound to object to be lazy
-					   loaded */
+loaded */
 /* Syminfo version values.  */
 #define SYMINFO_NONE		0
 #define SYMINFO_CURRENT		1
@@ -482,8 +482,8 @@ typedef struct
 
 
 /* Symbol table indices are found in the hash buckets and chain table
-   of a symbol hash table section.  This special index value indicates
-   the end of a chain, meaning no further symbols are found in that bucket.  */
+of a symbol hash table section.  This special index value indicates
+the end of a chain, meaning no further symbols are found in that bucket.  */
 
 #define STN_UNDEF	0		/* End of a chain.  */
 
@@ -506,35 +506,35 @@ typedef struct
 
 typedef struct
 {
-  Elf32_Addr	r_offset;		/* Address */
-  Elf32_Word	r_info;			/* Relocation type and symbol index */
+	Elf32_Addr	r_offset;		/* Address */
+	Elf32_Word	r_info;			/* Relocation type and symbol index */
 } Elf32_Rel;
 
 /* I have seen two different definitions of the Elf64_Rel and
-   Elf64_Rela structures, so we'll leave them out until Novell (or
-   whoever) gets their act together.  */
+Elf64_Rela structures, so we'll leave them out until Novell (or
+whoever) gets their act together.  */
 /* The following, at least, is used on Sparc v9, MIPS, and Alpha.  */
 
 typedef struct
 {
-  Elf64_Addr	r_offset;		/* Address */
-  Elf64_Xword	r_info;			/* Relocation type and symbol index */
+	Elf64_Addr	r_offset;		/* Address */
+	Elf64_Xword	r_info;			/* Relocation type and symbol index */
 } Elf64_Rel;
 
 /* Relocation table entry with addend (in section of type SHT_RELA).  */
 
 typedef struct
 {
-  Elf32_Addr	r_offset;		/* Address */
-  Elf32_Word	r_info;			/* Relocation type and symbol index */
-  Elf32_Sword	r_addend;		/* Addend */
+	Elf32_Addr	r_offset;		/* Address */
+	Elf32_Word	r_info;			/* Relocation type and symbol index */
+	Elf32_Sword	r_addend;		/* Addend */
 } Elf32_Rela;
 
 typedef struct
 {
-  Elf64_Addr	r_offset;		/* Address */
-  Elf64_Xword	r_info;			/* Relocation type and symbol index */
-  Elf64_Sxword	r_addend;		/* Addend */
+	Elf64_Addr	r_offset;		/* Address */
+	Elf64_Xword	r_info;			/* Relocation type and symbol index */
+	Elf64_Sxword	r_addend;		/* Addend */
 } Elf64_Rela;
 
 /* How to extract and insert information held in the r_info field.  */
@@ -551,31 +551,31 @@ typedef struct
 
 typedef struct
 {
-  Elf32_Word	p_type;			/* Segment type */
-  Elf32_Off	p_offset;		/* Segment file offset */
-  Elf32_Addr	p_vaddr;		/* Segment virtual address */
-  Elf32_Addr	p_paddr;		/* Segment physical address */
-  Elf32_Word	p_filesz;		/* Segment size in file */
-  Elf32_Word	p_memsz;		/* Segment size in memory */
-  Elf32_Word	p_flags;		/* Segment flags */
-  Elf32_Word	p_align;		/* Segment alignment */
+	Elf32_Word	p_type;			/* Segment type */
+	Elf32_Off	p_offset;		/* Segment file offset */
+	Elf32_Addr	p_vaddr;		/* Segment virtual address */
+	Elf32_Addr	p_paddr;		/* Segment physical address */
+	Elf32_Word	p_filesz;		/* Segment size in file */
+	Elf32_Word	p_memsz;		/* Segment size in memory */
+	Elf32_Word	p_flags;		/* Segment flags */
+	Elf32_Word	p_align;		/* Segment alignment */
 } Elf32_Phdr;
 
 typedef struct
 {
-  Elf64_Word	p_type;			/* Segment type */
-  Elf64_Word	p_flags;		/* Segment flags */
-  Elf64_Off	p_offset;		/* Segment file offset */
-  Elf64_Addr	p_vaddr;		/* Segment virtual address */
-  Elf64_Addr	p_paddr;		/* Segment physical address */
-  Elf64_Xword	p_filesz;		/* Segment size in file */
-  Elf64_Xword	p_memsz;		/* Segment size in memory */
-  Elf64_Xword	p_align;		/* Segment alignment */
+	Elf64_Word	p_type;			/* Segment type */
+	Elf64_Word	p_flags;		/* Segment flags */
+	Elf64_Off	p_offset;		/* Segment file offset */
+	Elf64_Addr	p_vaddr;		/* Segment virtual address */
+	Elf64_Addr	p_paddr;		/* Segment physical address */
+	Elf64_Xword	p_filesz;		/* Segment size in file */
+	Elf64_Xword	p_memsz;		/* Segment size in memory */
+	Elf64_Xword	p_align;		/* Segment alignment */
 } Elf64_Phdr;
 
 /* Special value for e_phnum.  This indicates that the real number of
-   program headers is too large to fit into e_phnum.  Instead the real
-   value is in the field sh_info of section 0.  */
+program headers is too large to fit into e_phnum.  Instead the real
+value is in the field sh_info of section 0.  */
 
 #define PN_XNUM		0xffff
 
@@ -657,22 +657,22 @@ typedef struct
 
 typedef struct
 {
-  Elf32_Sword	d_tag;			/* Dynamic entry type */
-  union
-    {
-      Elf32_Word d_val;			/* Integer value */
-      Elf32_Addr d_ptr;			/* Address value */
-    } d_un;
+	Elf32_Sword	d_tag;			/* Dynamic entry type */
+	union
+	{
+		Elf32_Word d_val;			/* Integer value */
+		Elf32_Addr d_ptr;			/* Address value */
+	} d_un;
 } Elf32_Dyn;
 
 typedef struct
 {
-  Elf64_Sxword	d_tag;			/* Dynamic entry type */
-  union
-    {
-      Elf64_Xword d_val;		/* Integer value */
-      Elf64_Addr d_ptr;			/* Address value */
-    } d_un;
+	Elf64_Sxword	d_tag;			/* Dynamic entry type */
+	union
+	{
+		Elf64_Xword d_val;		/* Integer value */
+		Elf64_Addr d_ptr;			/* Address value */
+	} d_un;
 } Elf64_Dyn;
 
 /* Legal values for d_tag (dynamic entry type).  */
@@ -719,8 +719,8 @@ typedef struct
 #define	DT_PROCNUM	DT_MIPS_NUM	/* Most used by any processor */
 
 /* DT_* entries which fall between DT_VALRNGHI & DT_VALRNGLO use the
-   Dyn.d_un.d_val field of the Elf*_Dyn structure.  This follows Sun's
-   approach.  */
+Dyn.d_un.d_val field of the Elf*_Dyn structure.  This follows Sun's
+approach.  */
 #define DT_VALRNGLO	0x6ffffd00
 #define DT_GNU_PRELINKED 0x6ffffdf5	/* Prelinking timestamp */
 #define DT_GNU_CONFLICTSZ 0x6ffffdf6	/* Size of conflict section */
@@ -731,7 +731,7 @@ typedef struct
 #define DT_MOVESZ	0x6ffffdfb
 #define DT_FEATURE_1	0x6ffffdfc	/* Feature selection (DTF_*).  */
 #define DT_POSFLAG_1	0x6ffffdfd	/* Flags for DT_* entries, effecting
-					   the following DT_* entry.  */
+the following DT_* entry.  */
 #define DT_SYMINSZ	0x6ffffdfe	/* Size of syminfo table (in bytes) */
 #define DT_SYMINENT	0x6ffffdff	/* Entry size of syminfo */
 #define DT_VALRNGHI	0x6ffffdff
@@ -739,10 +739,10 @@ typedef struct
 #define DT_VALNUM 12
 
 /* DT_* entries which fall between DT_ADDRRNGHI & DT_ADDRRNGLO use the
-   Dyn.d_un.d_ptr field of the Elf*_Dyn structure.
+Dyn.d_un.d_ptr field of the Elf*_Dyn structure.
 
-   If any adjustment is made to the ELF object after it has been
-   built these entries will need to be adjusted.  */
+If any adjustment is made to the ELF object after it has been
+built these entries will need to be adjusted.  */
 #define DT_ADDRRNGLO	0x6ffffe00
 #define DT_GNU_HASH	0x6ffffef5	/* GNU-style hash table.  */
 #define DT_TLSDESC_PLT	0x6ffffef6
@@ -760,7 +760,7 @@ typedef struct
 #define DT_ADDRNUM 11
 
 /* The versioning entry types.  The next are defined as part of the
-   GNU extension.  */
+GNU extension.  */
 #define DT_VERSYM	0x6ffffff0
 
 #define DT_RELACOUNT	0x6ffffff9
@@ -769,16 +769,16 @@ typedef struct
 /* These were chosen by Sun.  */
 #define DT_FLAGS_1	0x6ffffffb	/* State flags, see DF_1_* below.  */
 #define	DT_VERDEF	0x6ffffffc	/* Address of version definition
-					   table */
+table */
 #define	DT_VERDEFNUM	0x6ffffffd	/* Number of version definitions */
 #define	DT_VERNEED	0x6ffffffe	/* Address of table with needed
-					   versions */
+versions */
 #define	DT_VERNEEDNUM	0x6fffffff	/* Number of needed versions */
 #define DT_VERSIONTAGIDX(tag)	(DT_VERNEEDNUM - (tag))	/* Reverse order! */
 #define DT_VERSIONTAGNUM 16
 
 /* Sun added these machine-independent extensions in the "processor-specific"
-   range.  Be compatible.  */
+range.  Be compatible.  */
 #define DT_AUXILIARY    0x7ffffffd      /* Shared object to load before self */
 #define DT_FILTER       0x7fffffff      /* Shared object to get values from */
 #define DT_EXTRATAGIDX(tag)	((Elf32_Word)-((Elf32_Sword) (tag) <<1>>1)-1)
@@ -792,7 +792,7 @@ typedef struct
 #define DF_STATIC_TLS	0x00000010	/* Module uses the static TLS model */
 
 /* State flags selectable in the `d_un.d_val' element of the DT_FLAGS_1
-   entry in the dynamic section.  */
+entry in the dynamic section.  */
 #define DF_1_NOW	0x00000001	/* Set RTLD_NOW for this object.  */
 #define DF_1_GLOBAL	0x00000002	/* Set RTLD_GLOBAL for this object.  */
 #define DF_1_GROUP	0x00000004	/* Set RTLD_GROUP for this object.  */
@@ -827,32 +827,32 @@ typedef struct
 /* Flags in the DT_POSFLAG_1 entry effecting only the next DT_* entry.  */
 #define DF_P1_LAZYLOAD	0x00000001	/* Lazyload following object.  */
 #define DF_P1_GROUPPERM	0x00000002	/* Symbols from next object are not
-					   generally available.  */
+generally available.  */
 
 /* Version definition sections.  */
 
 typedef struct
 {
-  Elf32_Half	vd_version;		/* Version revision */
-  Elf32_Half	vd_flags;		/* Version information */
-  Elf32_Half	vd_ndx;			/* Version Index */
-  Elf32_Half	vd_cnt;			/* Number of associated aux entries */
-  Elf32_Word	vd_hash;		/* Version name hash value */
-  Elf32_Word	vd_aux;			/* Offset in bytes to verdaux array */
-  Elf32_Word	vd_next;		/* Offset in bytes to next verdef
-					   entry */
+	Elf32_Half	vd_version;		/* Version revision */
+	Elf32_Half	vd_flags;		/* Version information */
+	Elf32_Half	vd_ndx;			/* Version Index */
+	Elf32_Half	vd_cnt;			/* Number of associated aux entries */
+	Elf32_Word	vd_hash;		/* Version name hash value */
+	Elf32_Word	vd_aux;			/* Offset in bytes to verdaux array */
+	Elf32_Word	vd_next;		/* Offset in bytes to next verdef
+								entry */
 } Elf32_Verdef;
 
 typedef struct
 {
-  Elf64_Half	vd_version;		/* Version revision */
-  Elf64_Half	vd_flags;		/* Version information */
-  Elf64_Half	vd_ndx;			/* Version Index */
-  Elf64_Half	vd_cnt;			/* Number of associated aux entries */
-  Elf64_Word	vd_hash;		/* Version name hash value */
-  Elf64_Word	vd_aux;			/* Offset in bytes to verdaux array */
-  Elf64_Word	vd_next;		/* Offset in bytes to next verdef
-					   entry */
+	Elf64_Half	vd_version;		/* Version revision */
+	Elf64_Half	vd_flags;		/* Version information */
+	Elf64_Half	vd_ndx;			/* Version Index */
+	Elf64_Half	vd_cnt;			/* Number of associated aux entries */
+	Elf64_Word	vd_hash;		/* Version name hash value */
+	Elf64_Word	vd_aux;			/* Offset in bytes to verdaux array */
+	Elf64_Word	vd_next;		/* Offset in bytes to next verdef
+								entry */
 } Elf64_Verdef;
 
 
@@ -875,16 +875,16 @@ typedef struct
 
 typedef struct
 {
-  Elf32_Word	vda_name;		/* Version or dependency names */
-  Elf32_Word	vda_next;		/* Offset in bytes to next verdaux
-					   entry */
+	Elf32_Word	vda_name;		/* Version or dependency names */
+	Elf32_Word	vda_next;		/* Offset in bytes to next verdaux
+								entry */
 } Elf32_Verdaux;
 
 typedef struct
 {
-  Elf64_Word	vda_name;		/* Version or dependency names */
-  Elf64_Word	vda_next;		/* Offset in bytes to next verdaux
-					   entry */
+	Elf64_Word	vda_name;		/* Version or dependency names */
+	Elf64_Word	vda_next;		/* Offset in bytes to next verdaux
+								entry */
 } Elf64_Verdaux;
 
 
@@ -892,24 +892,24 @@ typedef struct
 
 typedef struct
 {
-  Elf32_Half	vn_version;		/* Version of structure */
-  Elf32_Half	vn_cnt;			/* Number of associated aux entries */
-  Elf32_Word	vn_file;		/* Offset of filename for this
-					   dependency */
-  Elf32_Word	vn_aux;			/* Offset in bytes to vernaux array */
-  Elf32_Word	vn_next;		/* Offset in bytes to next verneed
-					   entry */
+	Elf32_Half	vn_version;		/* Version of structure */
+	Elf32_Half	vn_cnt;			/* Number of associated aux entries */
+	Elf32_Word	vn_file;		/* Offset of filename for this
+								dependency */
+	Elf32_Word	vn_aux;			/* Offset in bytes to vernaux array */
+	Elf32_Word	vn_next;		/* Offset in bytes to next verneed
+								entry */
 } Elf32_Verneed;
 
 typedef struct
 {
-  Elf64_Half	vn_version;		/* Version of structure */
-  Elf64_Half	vn_cnt;			/* Number of associated aux entries */
-  Elf64_Word	vn_file;		/* Offset of filename for this
-					   dependency */
-  Elf64_Word	vn_aux;			/* Offset in bytes to vernaux array */
-  Elf64_Word	vn_next;		/* Offset in bytes to next verneed
-					   entry */
+	Elf64_Half	vn_version;		/* Version of structure */
+	Elf64_Half	vn_cnt;			/* Number of associated aux entries */
+	Elf64_Word	vn_file;		/* Offset of filename for this
+								dependency */
+	Elf64_Word	vn_aux;			/* Offset in bytes to vernaux array */
+	Elf64_Word	vn_next;		/* Offset in bytes to next verneed
+								entry */
 } Elf64_Verneed;
 
 
@@ -922,22 +922,22 @@ typedef struct
 
 typedef struct
 {
-  Elf32_Word	vna_hash;		/* Hash value of dependency name */
-  Elf32_Half	vna_flags;		/* Dependency specific information */
-  Elf32_Half	vna_other;		/* Unused */
-  Elf32_Word	vna_name;		/* Dependency name string offset */
-  Elf32_Word	vna_next;		/* Offset in bytes to next vernaux
-					   entry */
+	Elf32_Word	vna_hash;		/* Hash value of dependency name */
+	Elf32_Half	vna_flags;		/* Dependency specific information */
+	Elf32_Half	vna_other;		/* Unused */
+	Elf32_Word	vna_name;		/* Dependency name string offset */
+	Elf32_Word	vna_next;		/* Offset in bytes to next vernaux
+								entry */
 } Elf32_Vernaux;
 
 typedef struct
 {
-  Elf64_Word	vna_hash;		/* Hash value of dependency name */
-  Elf64_Half	vna_flags;		/* Dependency specific information */
-  Elf64_Half	vna_other;		/* Unused */
-  Elf64_Word	vna_name;		/* Dependency name string offset */
-  Elf64_Word	vna_next;		/* Offset in bytes to next vernaux
-					   entry */
+	Elf64_Word	vna_hash;		/* Hash value of dependency name */
+	Elf64_Half	vna_flags;		/* Dependency specific information */
+	Elf64_Half	vna_other;		/* Unused */
+	Elf64_Word	vna_name;		/* Dependency name string offset */
+	Elf64_Word	vna_next;		/* Offset in bytes to next vernaux
+								entry */
 } Elf64_Vernaux;
 
 
@@ -948,34 +948,34 @@ typedef struct
 /* Auxiliary vector.  */
 
 /* This vector is normally only used by the program interpreter.  The
-   usual definition in an ABI supplement uses the name auxv_t.  The
-   vector is not usually defined in a standard <elf.h> file, but it
-   can't hurt.  We rename it to avoid conflicts.  The sizes of these
-   types are an arrangement between the exec server and the program
-   interpreter, so we don't fully specify them here.  */
+usual definition in an ABI supplement uses the name auxv_t.  The
+vector is not usually defined in a standard <elf.h> file, but it
+can't hurt.  We rename it to avoid conflicts.  The sizes of these
+types are an arrangement between the exec server and the program
+interpreter, so we don't fully specify them here.  */
 
 typedef struct
 {
-  uint32_t a_type;		/* Entry type */
-  union
-    {
-      uint32_t a_val;		/* Integer value */
-      /* We use to have pointer elements added here.  We cannot do that,
-	 though, since it does not work when using 32-bit definitions
-	 on 64-bit platforms and vice versa.  */
-    } a_un;
+	uint32_t a_type;		/* Entry type */
+	union
+	{
+		uint32_t a_val;		/* Integer value */
+		/* We use to have pointer elements added here.  We cannot do that,
+		though, since it does not work when using 32-bit definitions
+		on 64-bit platforms and vice versa.  */
+	} a_un;
 } Elf32_auxv_t;
 
 typedef struct
 {
-  uint64_t a_type;		/* Entry type */
-  union
-    {
-      uint64_t a_val;		/* Integer value */
-      /* We use to have pointer elements added here.  We cannot do that,
-	 though, since it does not work when using 32-bit definitions
-	 on 64-bit platforms and vice versa.  */
-    } a_un;
+	uint64_t a_type;		/* Entry type */
+	union
+	{
+		uint64_t a_val;		/* Integer value */
+		/* We use to have pointer elements added here.  We cannot do that,
+		though, since it does not work when using 32-bit definitions
+		on 64-bit platforms and vice versa.  */
+	} a_un;
 } Elf64_auxv_t;
 
 /* Legal values for a_type (entry type).  */
@@ -1000,10 +1000,10 @@ typedef struct
 /* Some more special a_type values describing the hardware.  */
 #define AT_PLATFORM	15		/* String identifying platform.  */
 #define AT_HWCAP	16		/* Machine dependent hints about
-					   processor capabilities.  */
+processor capabilities.  */
 
 /* This entry gives some information about the FPU initialization
-   performed by the kernel.  */
+performed by the kernel.  */
 #define AT_FPUCW	18		/* Used FPU control word.  */
 
 /* Cache block sizes.  */
@@ -1012,7 +1012,7 @@ typedef struct
 #define AT_UCACHEBSIZE	21		/* Unified cache block size.  */
 
 /* A special ignored value for PPC, used by the kernel to control the
-   interpretation of the AUXV. Must be > 16.  */
+interpretation of the AUXV. Must be > 16.  */
 #define AT_IGNOREPPC	22		/* Entry should be ignored.  */
 
 #define	AT_SECURE	23		/* Boolean, was exec setuid-like?  */
@@ -1024,32 +1024,32 @@ typedef struct
 #define AT_EXECFN	31		/* Filename of executable.  */
 
 /* Pointer to the global system page used for system calls and other
-   nice things.  */
+nice things.  */
 #define AT_SYSINFO	32
 #define AT_SYSINFO_EHDR	33
 
 /* Shapes of the caches.  Bits 0-3 contains associativity; bits 4-7 contains
-   log2 of line size; mask those to get cache size.  */
+log2 of line size; mask those to get cache size.  */
 #define AT_L1I_CACHESHAPE	34
 #define AT_L1D_CACHESHAPE	35
 #define AT_L2_CACHESHAPE	36
 #define AT_L3_CACHESHAPE	37
 
 /* Note section contents.  Each entry in the note section begins with
-   a header of a fixed form.  */
+a header of a fixed form.  */
 
 typedef struct
 {
-  Elf32_Word n_namesz;			/* Length of the note's name.  */
-  Elf32_Word n_descsz;			/* Length of the note's descriptor.  */
-  Elf32_Word n_type;			/* Type of the note.  */
+	Elf32_Word n_namesz;			/* Length of the note's name.  */
+	Elf32_Word n_descsz;			/* Length of the note's descriptor.  */
+	Elf32_Word n_type;			/* Type of the note.  */
 } Elf32_Nhdr;
 
 typedef struct
 {
-  Elf64_Word n_namesz;			/* Length of the note's name.  */
-  Elf64_Word n_descsz;			/* Length of the note's descriptor.  */
-  Elf64_Word n_type;			/* Type of the note.  */
+	Elf64_Word n_namesz;			/* Length of the note's name.  */
+	Elf64_Word n_descsz;			/* Length of the note's descriptor.  */
+	Elf64_Word n_type;			/* Type of the note.  */
 } Elf64_Nhdr;
 
 /* Known names of notes.  */
@@ -1070,31 +1070,31 @@ typedef struct
 /* Defined note types for GNU systems.  */
 
 /* ABI information.  The descriptor consists of words:
-   word 0: OS descriptor
-   word 1: major version of the ABI
-   word 2: minor version of the ABI
-   word 3: subminor version of the ABI
+word 0: OS descriptor
+word 1: major version of the ABI
+word 2: minor version of the ABI
+word 3: subminor version of the ABI
 */
 #define NT_GNU_ABI_TAG	1
 #define ELF_NOTE_ABI	NT_GNU_ABI_TAG /* Old name.  */
 
 /* Known OSes.  These values can appear in word 0 of an
-   NT_GNU_ABI_TAG note section entry.  */
+NT_GNU_ABI_TAG note section entry.  */
 #define ELF_NOTE_OS_LINUX	0
 #define ELF_NOTE_OS_GNU		1
 #define ELF_NOTE_OS_SOLARIS2	2
 #define ELF_NOTE_OS_FREEBSD	3
 
 /* Synthetic hwcap information.  The descriptor begins with two words:
-   word 0: number of entries
-   word 1: bitmask of enabled entries
-   Then follow variable-length entries, one byte followed by a
-   '\0'-terminated hwcap name string.  The byte gives the bit
-   number to test if enabled, (1U << bit) & bitmask.  */
+word 0: number of entries
+word 1: bitmask of enabled entries
+Then follow variable-length entries, one byte followed by a
+'\0'-terminated hwcap name string.  The byte gives the bit
+number to test if enabled, (1U << bit) & bitmask.  */
 #define NT_GNU_HWCAP	2
 
 /* Build ID bits as generated by ld --build-id.
-   The descriptor consists of any nonzero number of bytes.  */
+The descriptor consists of any nonzero number of bytes.  */
 #define NT_GNU_BUILD_ID	3
 
 /* Version note generated by GNU gold containing a version string.  */
@@ -1104,20 +1104,20 @@ typedef struct
 /* Move records.  */
 typedef struct
 {
-  Elf32_Xword m_value;		/* Symbol value.  */
-  Elf32_Word m_info;		/* Size and index.  */
-  Elf32_Word m_poffset;		/* Symbol offset.  */
-  Elf32_Half m_repeat;		/* Repeat count.  */
-  Elf32_Half m_stride;		/* Stride info.  */
+	Elf32_Xword m_value;		/* Symbol value.  */
+	Elf32_Word m_info;		/* Size and index.  */
+	Elf32_Word m_poffset;		/* Symbol offset.  */
+	Elf32_Half m_repeat;		/* Repeat count.  */
+	Elf32_Half m_stride;		/* Stride info.  */
 } Elf32_Move;
 
 typedef struct
 {
-  Elf64_Xword m_value;		/* Symbol value.  */
-  Elf64_Xword m_info;		/* Size and index.  */
-  Elf64_Xword m_poffset;	/* Symbol offset.  */
-  Elf64_Half m_repeat;		/* Repeat count.  */
-  Elf64_Half m_stride;		/* Stride info.  */
+	Elf64_Xword m_value;		/* Symbol value.  */
+	Elf64_Xword m_info;		/* Size and index.  */
+	Elf64_Xword m_poffset;	/* Symbol offset.  */
+	Elf64_Half m_repeat;		/* Repeat count.  */
+	Elf64_Half m_stride;		/* Stride info.  */
 } Elf64_Move;
 
 /* Macro to construct move records.  */
@@ -1173,11 +1173,11 @@ typedef struct
 #define R_68K_TLS_IE16      35          /* 16 bit GOT offset for IE */
 #define R_68K_TLS_IE8       36          /* 8 bit GOT offset for IE */
 #define R_68K_TLS_LE32      37          /* 32 bit offset relative to
-					   static TLS block */
+static TLS block */
 #define R_68K_TLS_LE16      38          /* 16 bit offset relative to
-					   static TLS block */
+static TLS block */
 #define R_68K_TLS_LE8       39          /* 8 bit offset relative to
-					   static TLS block */
+static TLS block */
 #define R_68K_TLS_DTPMOD32  40          /* 32 bit module number */
 #define R_68K_TLS_DTPREL32  41          /* 32 bit module-relative offset */
 #define R_68K_TLS_TPREL32   42          /* 32 bit TP-relative offset */
@@ -1202,49 +1202,49 @@ typedef struct
 #define R_386_32PLT	   11
 #define R_386_TLS_TPOFF	   14		/* Offset in static TLS block */
 #define R_386_TLS_IE	   15		/* Address of GOT entry for static TLS
-					   block offset */
+block offset */
 #define R_386_TLS_GOTIE	   16		/* GOT entry for static TLS block
-					   offset */
+offset */
 #define R_386_TLS_LE	   17		/* Offset relative to static TLS
-					   block */
+block */
 #define R_386_TLS_GD	   18		/* Direct 32 bit for GNU version of
-					   general dynamic thread local data */
+general dynamic thread local data */
 #define R_386_TLS_LDM	   19		/* Direct 32 bit for GNU version of
-					   local dynamic thread local data
-					   in LE code */
+local dynamic thread local data
+in LE code */
 #define R_386_16	   20
 #define R_386_PC16	   21
 #define R_386_8		   22
 #define R_386_PC8	   23
 #define R_386_TLS_GD_32	   24		/* Direct 32 bit for general dynamic
-					   thread local data */
+thread local data */
 #define R_386_TLS_GD_PUSH  25		/* Tag for pushl in GD TLS code */
 #define R_386_TLS_GD_CALL  26		/* Relocation for call to
-					   __tls_get_addr() */
+__tls_get_addr() */
 #define R_386_TLS_GD_POP   27		/* Tag for popl in GD TLS code */
 #define R_386_TLS_LDM_32   28		/* Direct 32 bit for local dynamic
-					   thread local data in LE code */
+thread local data in LE code */
 #define R_386_TLS_LDM_PUSH 29		/* Tag for pushl in LDM TLS code */
 #define R_386_TLS_LDM_CALL 30		/* Relocation for call to
-					   __tls_get_addr() in LDM code */
+__tls_get_addr() in LDM code */
 #define R_386_TLS_LDM_POP  31		/* Tag for popl in LDM TLS code */
 #define R_386_TLS_LDO_32   32		/* Offset relative to TLS block */
 #define R_386_TLS_IE_32	   33		/* GOT entry for negated static TLS
-					   block offset */
+block offset */
 #define R_386_TLS_LE_32	   34		/* Negated offset relative to static
-					   TLS block */
+TLS block */
 #define R_386_TLS_DTPMOD32 35		/* ID of module containing symbol */
 #define R_386_TLS_DTPOFF32 36		/* Offset in TLS block */
 #define R_386_TLS_TPOFF32  37		/* Negated offset in static TLS block */
 /* 38? */
 #define R_386_TLS_GOTDESC  39		/* GOT offset for TLS descriptor.  */
 #define R_386_TLS_DESC_CALL 40		/* Marker of call through TLS
-					   descriptor for
-					   relaxation.  */
+descriptor for
+relaxation.  */
 #define R_386_TLS_DESC     41		/* TLS descriptor containing
-					   pointer to code and to
-					   argument, returning the TLS
-					   offset for the symbol.  */
+pointer to code and to
+argument, returning the TLS
+offset for the symbol.  */
 #define R_386_IRELATIVE	   42		/* Adjust indirectly by program base */
 /* Keep this the last entry.  */
 #define R_386_NUM	   43
@@ -1487,37 +1487,37 @@ typedef struct
 
 typedef union
 {
-  struct
-    {
-      Elf32_Word gt_current_g_value;	/* -G value used for compilation */
-      Elf32_Word gt_unused;		/* Not used */
-    } gt_header;			/* First entry in section */
-  struct
-    {
-      Elf32_Word gt_g_value;		/* If this value were used for -G */
-      Elf32_Word gt_bytes;		/* This many bytes would be used */
-    } gt_entry;				/* Subsequent entries in section */
+	struct
+	{
+		Elf32_Word gt_current_g_value;	/* -G value used for compilation */
+		Elf32_Word gt_unused;		/* Not used */
+	} gt_header;			/* First entry in section */
+	struct
+	{
+		Elf32_Word gt_g_value;		/* If this value were used for -G */
+		Elf32_Word gt_bytes;		/* This many bytes would be used */
+	} gt_entry;				/* Subsequent entries in section */
 } Elf32_gptab;
 
 /* Entry found in sections of type SHT_MIPS_REGINFO.  */
 
 typedef struct
 {
-  Elf32_Word	ri_gprmask;		/* General registers used */
-  Elf32_Word	ri_cprmask[4];		/* Coprocessor registers used */
-  Elf32_Sword	ri_gp_value;		/* $gp register value */
+	Elf32_Word	ri_gprmask;		/* General registers used */
+	Elf32_Word	ri_cprmask[4];		/* Coprocessor registers used */
+	Elf32_Sword	ri_gp_value;		/* $gp register value */
 } Elf32_RegInfo;
 
 /* Entries found in sections of type SHT_MIPS_OPTIONS.  */
 
 typedef struct
 {
-  unsigned char kind;		/* Determines interpretation of the
-				   variable part of descriptor.  */
-  unsigned char size;		/* Size of descriptor, including header.  */
-  Elf32_Section section;	/* Section header index of section affected,
-				   0 for global options.  */
-  Elf32_Word info;		/* Kind-specific information.  */
+	unsigned char kind;		/* Determines interpretation of the
+							variable part of descriptor.  */
+	unsigned char size;		/* Size of descriptor, including header.  */
+	Elf32_Section section;	/* Section header index of section affected,
+							0 for global options.  */
+	Elf32_Word info;		/* Kind-specific information.  */
 } Elf_Options;
 
 /* Values for `kind' field in Elf_Options.  */
@@ -1563,8 +1563,8 @@ typedef struct
 
 typedef struct
 {
-  Elf32_Word hwp_flags1;	/* Extra flags.  */
-  Elf32_Word hwp_flags2;	/* Extra flags.  */
+	Elf32_Word hwp_flags1;	/* Extra flags.  */
+	Elf32_Word hwp_flags2;	/* Extra flags.  */
 } Elf_Options_Hw;
 
 /* Masks for `info' in ElfOptions for ODK_HWAND and ODK_HWOR entries.  */
@@ -1660,21 +1660,21 @@ typedef struct
 #define DT_MIPS_RLD_MAP	     0x70000016	/* Address of run time loader map.  */
 #define DT_MIPS_DELTA_CLASS  0x70000017	/* Delta C++ class definition.  */
 #define DT_MIPS_DELTA_CLASS_NO    0x70000018 /* Number of entries in
-						DT_MIPS_DELTA_CLASS.  */
+DT_MIPS_DELTA_CLASS.  */
 #define DT_MIPS_DELTA_INSTANCE    0x70000019 /* Delta C++ class instances.  */
 #define DT_MIPS_DELTA_INSTANCE_NO 0x7000001a /* Number of entries in
-						DT_MIPS_DELTA_INSTANCE.  */
+DT_MIPS_DELTA_INSTANCE.  */
 #define DT_MIPS_DELTA_RELOC  0x7000001b /* Delta relocations.  */
 #define DT_MIPS_DELTA_RELOC_NO 0x7000001c /* Number of entries in
-					     DT_MIPS_DELTA_RELOC.  */
+DT_MIPS_DELTA_RELOC.  */
 #define DT_MIPS_DELTA_SYM    0x7000001d /* Delta symbols that Delta
-					   relocations refer to.  */
+relocations refer to.  */
 #define DT_MIPS_DELTA_SYM_NO 0x7000001e /* Number of entries in
-					   DT_MIPS_DELTA_SYM.  */
+DT_MIPS_DELTA_SYM.  */
 #define DT_MIPS_DELTA_CLASSSYM 0x70000020 /* Delta symbols that hold the
-					     class declaration.  */
+class declaration.  */
 #define DT_MIPS_DELTA_CLASSSYM_NO 0x70000021 /* Number of entries in
-						DT_MIPS_DELTA_CLASSSYM.  */
+DT_MIPS_DELTA_CLASSSYM.  */
 #define DT_MIPS_CXX_FLAGS    0x70000022 /* Flags indicating for C++ flavor.  */
 #define DT_MIPS_PIXIE_INIT   0x70000023
 #define DT_MIPS_SYMBOL_LIB   0x70000024
@@ -1687,17 +1687,17 @@ typedef struct
 #define DT_MIPS_DYNSTR_ALIGN 0x7000002b
 #define DT_MIPS_INTERFACE_SIZE 0x7000002c /* Size of the .interface section. */
 #define DT_MIPS_RLD_TEXT_RESOLVE_ADDR 0x7000002d /* Address of rld_text_rsolve
-						    function stored in GOT.  */
+function stored in GOT.  */
 #define DT_MIPS_PERF_SUFFIX  0x7000002e /* Default suffix of dso to be added
-					   by rld on dlopen() calls.  */
+by rld on dlopen() calls.  */
 #define DT_MIPS_COMPACT_SIZE 0x7000002f /* (O32)Size of compact rel section. */
 #define DT_MIPS_GP_VALUE     0x70000030 /* GP value for aux GOTs.  */
 #define DT_MIPS_AUX_DYNAMIC  0x70000031 /* Address of aux .dynamic.  */
 /* The address of .got.plt in an executable using the new non-PIC ABI.  */
 #define DT_MIPS_PLTGOT	     0x70000032
 /* The base of the PLT in an executable using the new non-PIC ABI if that
-   PLT is writable.  For a non-writable PLT, this is omitted or has a zero
-   value.  */
+PLT is writable.  For a non-writable PLT, this is omitted or has a zero
+value.  */
 #define DT_MIPS_RWPLT        0x70000034
 #define DT_MIPS_NUM	     0x35
 
@@ -1724,20 +1724,20 @@ typedef struct
 
 typedef struct
 {
-  Elf32_Word l_name;		/* Name (string table index) */
-  Elf32_Word l_time_stamp;	/* Timestamp */
-  Elf32_Word l_checksum;	/* Checksum */
-  Elf32_Word l_version;		/* Interface version */
-  Elf32_Word l_flags;		/* Flags */
+	Elf32_Word l_name;		/* Name (string table index) */
+	Elf32_Word l_time_stamp;	/* Timestamp */
+	Elf32_Word l_checksum;	/* Checksum */
+	Elf32_Word l_version;		/* Interface version */
+	Elf32_Word l_flags;		/* Flags */
 } Elf32_Lib;
 
 typedef struct
 {
-  Elf64_Word l_name;		/* Name (string table index) */
-  Elf64_Word l_time_stamp;	/* Timestamp */
-  Elf64_Word l_checksum;	/* Checksum */
-  Elf64_Word l_version;		/* Interface version */
-  Elf64_Word l_flags;		/* Flags */
+	Elf64_Word l_name;		/* Name (string table index) */
+	Elf64_Word l_time_stamp;	/* Timestamp */
+	Elf64_Word l_checksum;	/* Checksum */
+	Elf64_Word l_version;		/* Interface version */
+	Elf64_Word l_flags;		/* Flags */
 } Elf64_Lib;
 
 
@@ -1765,7 +1765,7 @@ typedef Elf32_Addr Elf32_Conflict;
 #define EF_PARISC_LSB		0x00040000 /* Program expects little endian. */
 #define EF_PARISC_WIDE		0x00080000 /* Program expects wide mode.  */
 #define EF_PARISC_NO_KABP	0x00100000 /* No kernel assisted branch
-					      prediction.  */
+prediction.  */
 #define EF_PARISC_LAZYSWAP	0x00400000 /* Allow lazy swapping.  */
 #define EF_PARISC_ARCH		0x0000ffff /* Architecture version.  */
 
@@ -1778,7 +1778,7 @@ typedef Elf32_Addr Elf32_Conflict;
 /* Additional section indeces.  */
 
 #define SHN_PARISC_ANSI_COMMON	0xff00	   /* Section for tenatively declared
-					      symbols in ANSI C.  */
+symbols in ANSI C.  */
 #define SHN_PARISC_HUGE_COMMON	0xff01	   /* Common blocks in huge model.  */
 
 /* Legal values for sh_type field of Elf32_Shdr.  */
@@ -2026,7 +2026,7 @@ typedef Elf32_Addr Elf32_Conflict;
 /* Cygnus local bits below */
 #define EF_PPC_RELOCATABLE	0x00010000	/* PowerPC -mrelocatable flag*/
 #define EF_PPC_RELOCATABLE_LIB	0x00008000	/* PowerPC -mrelocatable-lib
-						   flag */
+flag */
 
 /* PowerPC relocations defined by the ABIs */
 #define R_PPC_NONE		0
@@ -2098,7 +2098,7 @@ typedef Elf32_Addr Elf32_Conflict;
 #define R_PPC_GOT_DTPREL16_HA	94 /* half16*	(sym+add)@got@dtprel@ha */
 
 /* The remaining relocs are from the Embedded ELF ABI, and are not
-   in the SVR4 ELF ABI.  */
+in the SVR4 ELF ABI.  */
 #define R_PPC_EMB_NADDR32	101
 #define R_PPC_EMB_NADDR16	102
 #define R_PPC_EMB_NADDR16_LO	103
@@ -2134,7 +2134,7 @@ typedef Elf32_Addr Elf32_Conflict;
 #define R_PPC_REL16_HA		252	/* half16   (sym+add-.)@ha */
 
 /* This is a phony reloc to handle any old fashioned TOC16 references
-   that may still be in object files.  */
+that may still be in object files.  */
 #define R_PPC_TOC16		255
 
 /* PowerPC specific values for the Dyn d_tag field.  */
@@ -2314,11 +2314,11 @@ typedef Elf32_Addr Elf32_Conflict;
 /* ARM-specific values for sh_flags */
 #define SHF_ARM_ENTRYSECT	0x10000000 /* Section contains an entry point */
 #define SHF_ARM_COMDEF		0x80000000 /* Section may be multiply defined
-					      in the input to a link step.  */
+in the input to a link step.  */
 
 /* ARM-specific program header flags */
 #define PF_ARM_SB		0x10000000 /* Segment contains the location
-					      addressed by the static base. */
+addressed by the static base. */
 #define PF_ARM_PI		0x20000000 /* Position-independent segment.  */
 #define PF_ARM_ABS		0x40000000 /* Absolute segment.  */
 
@@ -2400,15 +2400,15 @@ typedef Elf32_Addr Elf32_Conflict;
 #define R_ARM_THM_PC11		102	/* thumb unconditional branch */
 #define R_ARM_THM_PC9		103	/* thumb conditional branch */
 #define R_ARM_TLS_GD32		104	/* PC-rel 32 bit for global dynamic
-					   thread local data */
+thread local data */
 #define R_ARM_TLS_LDM32		105	/* PC-rel 32 bit for local dynamic
-					   thread local data */
+thread local data */
 #define R_ARM_TLS_LDO32		106	/* 32 bit offset relative to TLS
-					   block */
+block */
 #define R_ARM_TLS_IE32		107	/* PC-rel 32 bit for GOT entry of
-					   static TLS block offset */
+static TLS block offset */
 #define R_ARM_TLS_LE32		108	/* 32 bit offset relative to static
-					   TLS block */
+TLS block */
 #define	R_ARM_THM_TLS_DESCSEQ	129
 #define R_ARM_IRELATIVE		160
 #define R_ARM_RXPC25		249
@@ -2665,46 +2665,46 @@ typedef Elf32_Addr Elf32_Conflict;
 #define R_390_PLTOFF64		36	/* 16 bit offset from GOT to PLT. */
 #define R_390_TLS_LOAD		37	/* Tag for load insn in TLS code.  */
 #define R_390_TLS_GDCALL	38	/* Tag for function call in general
-					   dynamic TLS code. */
+dynamic TLS code. */
 #define R_390_TLS_LDCALL	39	/* Tag for function call in local
-					   dynamic TLS code. */
+dynamic TLS code. */
 #define R_390_TLS_GD32		40	/* Direct 32 bit for general dynamic
-					   thread local data.  */
+thread local data.  */
 #define R_390_TLS_GD64		41	/* Direct 64 bit for general dynamic
-					  thread local data.  */
+thread local data.  */
 #define R_390_TLS_GOTIE12	42	/* 12 bit GOT offset for static TLS
-					   block offset.  */
+block offset.  */
 #define R_390_TLS_GOTIE32	43	/* 32 bit GOT offset for static TLS
-					   block offset.  */
+block offset.  */
 #define R_390_TLS_GOTIE64	44	/* 64 bit GOT offset for static TLS
-					   block offset. */
+block offset. */
 #define R_390_TLS_LDM32		45	/* Direct 32 bit for local dynamic
-					   thread local data in LE code.  */
+thread local data in LE code.  */
 #define R_390_TLS_LDM64		46	/* Direct 64 bit for local dynamic
-					   thread local data in LE code.  */
+thread local data in LE code.  */
 #define R_390_TLS_IE32		47	/* 32 bit address of GOT entry for
-					   negated static TLS block offset.  */
+negated static TLS block offset.  */
 #define R_390_TLS_IE64		48	/* 64 bit address of GOT entry for
-					   negated static TLS block offset.  */
+negated static TLS block offset.  */
 #define R_390_TLS_IEENT		49	/* 32 bit rel. offset to GOT entry for
-					   negated static TLS block offset.  */
+negated static TLS block offset.  */
 #define R_390_TLS_LE32		50	/* 32 bit negated offset relative to
-					   static TLS block.  */
+static TLS block.  */
 #define R_390_TLS_LE64		51	/* 64 bit negated offset relative to
-					   static TLS block.  */
+static TLS block.  */
 #define R_390_TLS_LDO32		52	/* 32 bit offset relative to TLS
-					   block.  */
+block.  */
 #define R_390_TLS_LDO64		53	/* 64 bit offset relative to TLS
-					   block.  */
+block.  */
 #define R_390_TLS_DTPMOD	54	/* ID of module containing symbol.  */
 #define R_390_TLS_DTPOFF	55	/* Offset in TLS block.	 */
 #define R_390_TLS_TPOFF		56	/* Negated offset in static TLS
-					   block.  */
+block.  */
 #define R_390_20		57	/* Direct 20 bit.  */
 #define R_390_GOT20		58	/* 20 bit GOT offset.  */
 #define R_390_GOTPLT20		59	/* 20 bit offset to jump slot.  */
 #define R_390_TLS_GOTIE20	60	/* 20 bit GOT offset for static TLS
-					   block offset.  */
+block offset.  */
 #define R_390_IRELATIVE         61      /* STT_GNU_IFUNC relocation.  */
 /* Keep this the last entry.  */
 #define R_390_NUM		62
@@ -2746,7 +2746,7 @@ typedef Elf32_Addr Elf32_Conflict;
 #define R_X86_64_JUMP_SLOT	7	/* Create PLT entry */
 #define R_X86_64_RELATIVE	8	/* Adjust by program base */
 #define R_X86_64_GOTPCREL	9	/* 32 bit signed PC relative
-					   offset to GOT */
+offset to GOT */
 #define R_X86_64_32		10	/* Direct 32 bit zero extended */
 #define R_X86_64_32S		11	/* Direct 32 bit sign extended */
 #define R_X86_64_16		12	/* Direct 16 bit zero extended */
@@ -2757,29 +2757,29 @@ typedef Elf32_Addr Elf32_Conflict;
 #define R_X86_64_DTPOFF64	17	/* Offset in module's TLS block */
 #define R_X86_64_TPOFF64	18	/* Offset in initial TLS block */
 #define R_X86_64_TLSGD		19	/* 32 bit signed PC relative offset
-					   to two GOT entries for GD symbol */
+to two GOT entries for GD symbol */
 #define R_X86_64_TLSLD		20	/* 32 bit signed PC relative offset
-					   to two GOT entries for LD symbol */
+to two GOT entries for LD symbol */
 #define R_X86_64_DTPOFF32	21	/* Offset in TLS block */
 #define R_X86_64_GOTTPOFF	22	/* 32 bit signed PC relative offset
-					   to GOT entry for IE symbol */
+to GOT entry for IE symbol */
 #define R_X86_64_TPOFF32	23	/* Offset in initial TLS block */
 #define R_X86_64_PC64		24	/* PC relative 64 bit */
 #define R_X86_64_GOTOFF64	25	/* 64 bit offset to GOT */
 #define R_X86_64_GOTPC32	26	/* 32 bit signed pc relative
-					   offset to GOT */
+offset to GOT */
 #define R_X86_64_GOT64		27	/* 64-bit GOT entry offset */
 #define R_X86_64_GOTPCREL64	28	/* 64-bit PC relative offset
-					   to GOT entry */
+to GOT entry */
 #define R_X86_64_GOTPC64	29	/* 64-bit PC relative offset to GOT */
 #define R_X86_64_GOTPLT64	30 	/* like GOT64, says PLT entry needed */
 #define R_X86_64_PLTOFF64	31	/* 64-bit GOT relative offset
-					   to PLT entry */
+to PLT entry */
 #define R_X86_64_SIZE32		32	/* Size of symbol plus 32-bit addend */
 #define R_X86_64_SIZE64		33	/* Size of symbol plus 64-bit addend */
 #define R_X86_64_GOTPC32_TLSDESC 34	/* GOT offset for TLS descriptor.  */
 #define R_X86_64_TLSDESC_CALL   35	/* Marker for call through TLS
-					   descriptor.  */
+descriptor.  */
 #define R_X86_64_TLSDESC        36	/* TLS descriptor.  */
 #define R_X86_64_IRELATIVE	37	/* Adjust indirectly by program base */
 #define R_X86_64_RELATIVE64	38	/* 64-bit adjust by program base */
@@ -2816,18 +2816,18 @@ typedef Elf32_Addr Elf32_Conflict;
 #define R_MN10300_TLS_LD	25	/* 32-bit offset for local dynamic.  */
 #define R_MN10300_TLS_LDO	26	/* Module-relative offset.  */
 #define R_MN10300_TLS_GOTIE	27	/* GOT offset for static TLS block
-					   offset.  */
+offset.  */
 #define R_MN10300_TLS_IE	28	/* GOT address for static TLS block
-					   offset.  */
+offset.  */
 #define R_MN10300_TLS_LE	29	/* Offset relative to static TLS
-					   block.  */
+block.  */
 #define R_MN10300_TLS_DTPMOD	30	/* ID of module containing symbol.  */
 #define R_MN10300_TLS_DTPOFF	31	/* Offset in module TLS block.  */
 #define R_MN10300_TLS_TPOFF	32	/* Offset in static TLS block.  */
 #define R_MN10300_SYM_DIFF	33	/* Adjustment for next reloc as needed
-					   by linker relaxation.  */
+by linker relaxation.  */
 #define R_MN10300_ALIGN		34	/* Alignment requirement for linker
-					   relaxation.  */
+relaxation.  */
 #define R_MN10300_NUM		35
 
 
@@ -2869,20 +2869,20 @@ typedef Elf32_Addr Elf32_Conflict;
 #define R_M32R_GOTOFF		54	/* 24 bit offset to GOT */
 #define R_M32R_GOTPC24		55	/* 24 bit PC relative offset to GOT */
 #define R_M32R_GOT16_HI_ULO	56	/* High 16 bit GOT entry with unsigned
-					   low */
+low */
 #define R_M32R_GOT16_HI_SLO	57	/* High 16 bit GOT entry with signed
-					   low */
+low */
 #define R_M32R_GOT16_LO		58	/* Low 16 bit GOT entry */
 #define R_M32R_GOTPC_HI_ULO	59	/* High 16 bit PC relative offset to
-					   GOT with unsigned low */
+GOT with unsigned low */
 #define R_M32R_GOTPC_HI_SLO	60	/* High 16 bit PC relative offset to
-					   GOT with signed low */
+GOT with signed low */
 #define R_M32R_GOTPC_LO		61	/* Low 16 bit PC relative offset to
-					   GOT */
+GOT */
 #define R_M32R_GOTOFF_HI_ULO	62	/* High 16 bit offset to GOT
-					   with unsigned low */
+with unsigned low */
 #define R_M32R_GOTOFF_HI_SLO	63	/* High 16 bit offset to GOT
-					   with signed low */
+with signed low */
 #define R_M32R_GOTOFF_LO	64	/* Low 16 bit offset to GOT */
 #define R_M32R_NUM		256	/* Keep this the last entry. */
 

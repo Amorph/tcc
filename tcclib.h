@@ -1,9 +1,9 @@
-/* Simple libc header for TCC 
- * 
- * Add any function you want from the libc there. This file is here
- * only for your convenience so that you do not need to put the whole
- * glibc include files on your floppy disk 
- */
+/* Simple libc header for TCC
+*
+* Add any function you want from the libc there. This file is here
+* only for your convenience so that you do not need to put the whole
+* glibc include files on your floppy disk
+*/
 #ifndef _TCCLIB_H
 #define _TCCLIB_H
 
@@ -47,10 +47,10 @@ int snprintf(char *str, size_t size, const  char  *format, ...);
 int asprintf(char **strp, const char *format, ...);
 int dprintf(int fd, const char *format, ...);
 int vprintf(const char *format, va_list ap);
-int vfprintf(FILE  *stream,  const  char *format, va_list ap);
+int vfprintf(FILE  *stream, const  char *format, va_list ap);
 int vsprintf(char *str, const char *format, va_list ap);
 int vsnprintf(char *str, size_t size, const char  *format, va_list ap);
-int vasprintf(char  **strp,  const  char *format, va_list ap);
+int vasprintf(char  **strp, const  char *format, va_list ap);
 int vdprintf(int fd, const char *format, va_list ap);
 
 void perror(const char *s);

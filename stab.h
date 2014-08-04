@@ -9,7 +9,7 @@
 enum __stab_debug_code
 {
 #include "stab.def"
-LAST_UNUSED_STAB_CODE
+	LAST_UNUSED_STAB_CODE
 };
 
 #undef __define_stab

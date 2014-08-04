@@ -7,15 +7,15 @@
 /*  COFF FILE HEADER                                                      */
 /*------------------------------------------------------------------------*/
 struct filehdr {
-        unsigned short  f_magic;        /* magic number */
-        unsigned short  f_nscns;        /* number of sections */
-        long            f_timdat;       /* time & date stamp */
-        long            f_symptr;       /* file pointer to symtab */
-        long            f_nsyms;        /* number of symtab entries */
-        unsigned short  f_opthdr;       /* sizeof(optional hdr) */
-        unsigned short  f_flags;        /* flags */
-        unsigned short  f_TargetID;     /* for C6x = 0x0099 */
-        };
+	unsigned short  f_magic;        /* magic number */
+	unsigned short  f_nscns;        /* number of sections */
+	long            f_timdat;       /* time & date stamp */
+	long            f_symptr;       /* file pointer to symtab */
+	long            f_nsyms;        /* number of symtab entries */
+	unsigned short  f_opthdr;       /* sizeof(optional hdr) */
+	unsigned short  f_flags;        /* flags */
+	unsigned short  f_TargetID;     /* for C6x = 0x0099 */
+};
 
 /*------------------------------------------------------------------------*/
 /*  File header flags                                                     */
@@ -49,26 +49,26 @@ struct filehdr {
 #define ISARCHIVE(x)    ((((unsigned short)(x))==(unsigned short)ARTYPE))
 #define BADMAGIC(x)     (((unsigned short)(x) & 0x8080) && !ISMAGIC(x))
 
-
+
 /*------------------------------------------------------------------------*/
 /*  OPTIONAL FILE HEADER                                                  */
 /*------------------------------------------------------------------------*/
 typedef struct aouthdr {
-        short   magic;          /* see magic.h                          */
-        short   vstamp;         /* version stamp                        */
-        long    tsize;          /* text size in bytes, padded to FW bdry*/
-        long    dsize;          /* initialized data "  "                */
-        long    bsize;          /* uninitialized data "   "             */
-        long    entrypt;        /* entry pt.                            */
-        long    text_start;     /* base of text used for this file      */
-        long    data_start;     /* base of data used for this file      */
+	short   magic;          /* see magic.h                          */
+	short   vstamp;         /* version stamp                        */
+	long    tsize;          /* text size in bytes, padded to FW bdry*/
+	long    dsize;          /* initialized data "  "                */
+	long    bsize;          /* uninitialized data "   "             */
+	long    entrypt;        /* entry pt.                            */
+	long    text_start;     /* base of text used for this file      */
+	long    data_start;     /* base of data used for this file      */
 } AOUTHDR;
 
 #define AOUTSZ  sizeof(AOUTHDR)
 
 /*----------------------------------------------------------------------*/
 /*      When a UNIX aout header is to be built in the optional header,  */
-/*      the following magic numbers can appear in that header:          */ 
+/*      the following magic numbers can appear in that header:          */
 /*                                                                      */
 /*              AOUT1MAGIC : default : readonly sharable text segment   */
 /*              AOUT2MAGIC:          : writable text segment            */
@@ -78,7 +78,7 @@ typedef struct aouthdr {
 #define AOUT2MAGIC 0407
 #define PAGEMAGIC  0413
 
-
+
 /*------------------------------------------------------------------------*/
 /*  COMMON ARCHIVE FILE STRUCTURES                                        */
 /*                                                                        */
@@ -116,33 +116,33 @@ typedef struct aouthdr {
 
 struct ar_hdr           /* archive file member header - printable ascii */
 {
-        char    ar_name[16];    /* file member name - `/' terminated */
-        char    ar_date[12];    /* file member date - decimal */
-        char    ar_uid[6];      /* file member user id - decimal */
-        char    ar_gid[6];      /* file member group id - decimal */
-        char    ar_mode[8];     /* file member mode - octal */
-        char    ar_size[10];    /* file member size - decimal */
-        char    ar_fmag[2];     /* ARFMAG - string to end header */
+	char    ar_name[16];    /* file member name - `/' terminated */
+	char    ar_date[12];    /* file member date - decimal */
+	char    ar_uid[6];      /* file member user id - decimal */
+	char    ar_gid[6];      /* file member group id - decimal */
+	char    ar_mode[8];     /* file member mode - octal */
+	char    ar_size[10];    /* file member size - decimal */
+	char    ar_fmag[2];     /* ARFMAG - string to end header */
 };
 
-
+
 /*------------------------------------------------------------------------*/
 /*  SECTION HEADER                                                        */
 /*------------------------------------------------------------------------*/
 struct scnhdr {
-        char            s_name[8];      /* section name */
-        long            s_paddr;        /* physical address */
-        long            s_vaddr;        /* virtual address */
-        long            s_size;         /* section size */
-        long            s_scnptr;       /* file ptr to raw data for section */
-        long            s_relptr;       /* file ptr to relocation */
-        long            s_lnnoptr;      /* file ptr to line numbers */
-        unsigned int	s_nreloc;       /* number of relocation entries */
-        unsigned int	s_nlnno;        /* number of line number entries */
-        unsigned int	s_flags;        /* flags */
-		unsigned short	s_reserved;     /* reserved byte */
-		unsigned short  s_page;         /* memory page id */
-        };
+	char            s_name[8];      /* section name */
+	long            s_paddr;        /* physical address */
+	long            s_vaddr;        /* virtual address */
+	long            s_size;         /* section size */
+	long            s_scnptr;       /* file ptr to raw data for section */
+	long            s_relptr;       /* file ptr to relocation */
+	long            s_lnnoptr;      /* file ptr to line numbers */
+	unsigned int	s_nreloc;       /* number of relocation entries */
+	unsigned int	s_nlnno;        /* number of line number entries */
+	unsigned int	s_flags;        /* flags */
+	unsigned short	s_reserved;     /* reserved byte */
+	unsigned short  s_page;         /* memory page id */
+};
 
 #define SCNHDR  struct scnhdr
 #define SCNHSZ  sizeof(SCNHDR)
@@ -165,9 +165,9 @@ struct scnhdr {
 #define STYP_GROUP  0x04  /* "grouped" : formed of input sections */
 #define STYP_PAD    0x08  /* "padding" : not allocated, not relocated, loaded */
 #define STYP_COPY   0x10  /* "copy"    : used for C init tables - 
-                                                not allocated, relocated,
-                                                loaded;  reloc & lineno
-                                                entries processed normally */
+not allocated, relocated,
+loaded;  reloc & lineno
+entries processed normally */
 #define STYP_TEXT   0x20   /* section contains text only */
 #define STYP_DATA   0x40   /* section contains data only */
 #define STYP_BSS    0x80   /* section contains bss only */
@@ -176,16 +176,16 @@ struct scnhdr {
 #define ALIGN_MASK  0x0F00 /* part of s_flags that is used for align vals */
 #define ALIGNSIZE(x) (1 << ((x & ALIGN_MASK) >> 8))
 
-
+
 /*------------------------------------------------------------------------*/
 /*  RELOCATION ENTRIES                                                    */
 /*------------------------------------------------------------------------*/
 struct reloc
 {
-   long            r_vaddr;        /* (virtual) address of reference */
-   short           r_symndx;       /* index into symbol table */
-   unsigned short  r_disp;         /* additional bits for address calculation */
-   unsigned short  r_type;         /* relocation type */
+	long            r_vaddr;        /* (virtual) address of reference */
+	short           r_symndx;       /* index into symbol table */
+	unsigned short  r_disp;         /* additional bits for address calculation */
+	unsigned short  r_type;         /* relocation type */
 };
 
 #define RELOC   struct reloc
@@ -216,25 +216,25 @@ struct reloc
 #define R_PARTMS9      051        /* DSP: 9 bit page of 16 bit address      */
 #define R_REL13        052        /* DSP: 13 bits, direct                   */
 
-
+
 /*------------------------------------------------------------------------*/
 /*  LINE NUMBER ENTRIES                                                   */
 /*------------------------------------------------------------------------*/
 struct lineno
 {
-        union
-        {
-                long    l_symndx ;      /* sym. table index of function name
-                                                iff l_lnno == 0      */
-                long    l_paddr ;       /* (physical) address of line number */
-        }               l_addr ;
-        unsigned short  l_lnno ;        /* line number */
+	union
+	{
+		long    l_symndx;      /* sym. table index of function name
+							   iff l_lnno == 0      */
+		long    l_paddr;       /* (physical) address of line number */
+	}               l_addr;
+	unsigned short  l_lnno;        /* line number */
 };
 
 #define LINENO  struct lineno
 #define LINESZ  6       /* sizeof(LINENO) */
 
-
+
 /*------------------------------------------------------------------------*/
 /*   STORAGE CLASSES                                                      */
 /*------------------------------------------------------------------------*/
@@ -266,8 +266,8 @@ struct lineno
 #define  C_LINE          104   /* dummy sclass for line number entry */
 #define  C_ALIAS         105   /* duplicate tag */
 #define  C_HIDDEN        106   /* special storage class for external */
-                               /* symbols in dmert public libraries  */
-
+/* symbols in dmert public libraries  */
+
 /*------------------------------------------------------------------------*/
 /*  SYMBOL TABLE ENTRIES                                                  */
 /*------------------------------------------------------------------------*/
@@ -279,21 +279,21 @@ struct lineno
 
 struct syment
 {
-        union
-        {
-                char            _n_name[SYMNMLEN];      /* old COFF version */
-                struct
-                {
-                        long    _n_zeroes;      /* new == 0 */
-                        long    _n_offset;      /* offset into string table */
-                } _n_n;
-                char            *_n_nptr[2];    /* allows for overlaying */
-        } _n;
-        long                    n_value;        /* value of symbol */
-        short                   n_scnum;        /* section number */
-        unsigned short          n_type;         /* type and derived type */
-        char                    n_sclass;       /* storage class */
-        char                    n_numaux;       /* number of aux. entries */
+	union
+	{
+		char            _n_name[SYMNMLEN];      /* old COFF version */
+		struct
+		{
+			long    _n_zeroes;      /* new == 0 */
+			long    _n_offset;      /* offset into string table */
+		} _n_n;
+		char            *_n_nptr[2];    /* allows for overlaying */
+	} _n;
+	long                    n_value;        /* value of symbol */
+	short                   n_scnum;        /* section number */
+	unsigned short          n_type;         /* type and derived type */
+	char                    n_sclass;       /* storage class */
+	char                    n_numaux;       /* number of aux. entries */
 };
 
 #define n_name          _n._n_name
@@ -312,7 +312,7 @@ struct syment
 #define  N_TV     (unsigned short)-3    /* needs transfer vector (preload) */
 #define  P_TV     (unsigned short)-4    /* needs transfer vector (postload) */
 
-
+
 /*------------------------------------------------------------------------*/
 /* The fundamental type of a symbol packed into the low                   */
 /* 4 bits of the word.                                                    */
@@ -370,7 +370,7 @@ struct syment
 #define  INCREF_COFF(x) ((((x)&~N_BTMASK_COFF)<<N_TSHIFT_COFF)|(DT_PTR<<N_BTSHFT_COFF)|(x&N_BTMASK_COFF))
 #define  DECREF_COFF(x) ((((x)>>N_TSHIFT_COFF)&~N_BTMASK_COFF)|((x)&N_BTMASK_COFF))
 
-
+
 /*------------------------------------------------------------------------*/
 /*  AUXILIARY SYMBOL ENTRY                                                */
 /*------------------------------------------------------------------------*/
@@ -436,7 +436,7 @@ union auxent
 /*--------------------------------------------------------------------------*/
 #define _START          "_start"
 #define _MAIN           "_main"
-    /*  _CSTART         "_c_int00"          (defined in params.h)  */
+/*  _CSTART         "_c_int00"          (defined in params.h)  */
 
 
 #define _TVORIG         "_tvorig"

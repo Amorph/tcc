@@ -1,22 +1,22 @@
 /*
- *  TCC - Tiny C Compiler
- * 
- *  Copyright (c) 2001-2004 Fabrice Bellard
- *
- * This library is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation; either
- * version 2 of the License, or (at your option) any later version.
- *
- * This library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
- */
+*  TCC - Tiny C Compiler
+*
+*  Copyright (c) 2001-2004 Fabrice Bellard
+*
+* This library is free software; you can redistribute it and/or
+* modify it under the terms of the GNU Lesser General Public
+* License as published by the Free Software Foundation; either
+* version 2 of the License, or (at your option) any later version.
+*
+* This library is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+* Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public
+* License along with this library; if not, write to the Free Software
+* Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+*/
 
 #ifndef _TCC_H
 #define _TCC_H
@@ -56,8 +56,8 @@
 #  include <dlfcn.h>
 # endif
 /* XXX: need to define this to use them in non ISOC99 context */
- extern float strtof (const char *__nptr, char **__endptr);
- extern long double strtold (const char *__nptr, char **__endptr);
+extern float strtof(const char *__nptr, char **__endptr);
+extern long double strtold(const char *__nptr, char **__endptr);
 #else /* on _WIN32: */
 # include <windows.h>
 # include <sys/timeb.h>
@@ -310,14 +310,14 @@
 
 /* token symbol management */
 typedef struct TokenSym {
-    struct TokenSym *hash_next;
-    struct Sym *sym_define; /* direct pointer to define */
-    struct Sym *sym_label; /* direct pointer to label */
-    struct Sym *sym_struct; /* direct pointer to structure */
-    struct Sym *sym_identifier; /* direct pointer to identifier */
-    int tok; /* token number */
-    int len;
-    char str[1];
+	struct TokenSym *hash_next;
+	struct Sym *sym_define; /* direct pointer to define */
+	struct Sym *sym_label; /* direct pointer to label */
+	struct Sym *sym_struct; /* direct pointer to structure */
+	struct Sym *sym_identifier; /* direct pointer to identifier */
+	int tok; /* token number */
+	int len;
+	char str[1];
 } TokenSym;
 
 #ifdef TCC_TARGET_PE
@@ -327,121 +327,121 @@ typedef int nwchar_t;
 #endif
 
 typedef struct CString {
-    int size; /* size in bytes */
-    void *data; /* either 'char *' or 'nwchar_t *' */
-    int size_allocated;
-    void *data_allocated; /* if non NULL, data has been malloced */
+	int size; /* size in bytes */
+	void *data; /* either 'char *' or 'nwchar_t *' */
+	int size_allocated;
+	void *data_allocated; /* if non NULL, data has been malloced */
 } CString;
 
 /* type definition */
 typedef struct CType {
-    int t;
-    struct Sym *ref;
+	int t;
+	struct Sym *ref;
 } CType;
 
 /* constant value */
 typedef union CValue {
-    long double ld;
-    double d;
-    float f;
-    int i;
-    unsigned int ui;
-    unsigned int ul; /* address (should be unsigned long on 64 bit cpu) */
-    long long ll;
-    unsigned long long ull;
-    struct CString *cstr;
-    addr_t ptr_offset;
-    int tab[LDOUBLE_SIZE/4];
+	long double ld;
+	double d;
+	float f;
+	int i;
+	unsigned int ui;
+	unsigned int ul; /* address (should be unsigned long on 64 bit cpu) */
+	long long ll;
+	unsigned long long ull;
+	struct CString *cstr;
+	addr_t ptr_offset;
+	int tab[LDOUBLE_SIZE / 4];
 } CValue;
 
 /* value on stack */
 typedef struct SValue {
-    CType type;      /* type */
-    unsigned short r;      /* register + flags */
-    unsigned short r2;     /* second register, used for 'long long'
-                              type. If not used, set to VT_CONST */
-    CValue c;              /* constant, if VT_CONST */
-    struct Sym *sym;       /* symbol, if (VT_SYM | VT_CONST) */
+	CType type;      /* type */
+	unsigned short r;      /* register + flags */
+	unsigned short r2;     /* second register, used for 'long long'
+						   type. If not used, set to VT_CONST */
+	CValue c;              /* constant, if VT_CONST */
+	struct Sym *sym;       /* symbol, if (VT_SYM | VT_CONST) */
 } SValue;
 
 struct Attribute {
-    unsigned
-        func_call     : 3, /* calling convention (0..5), see below */
-        aligned       : 5, /* alignement (0..16) */
-        packed        : 1,
-        func_export   : 1,
-        func_import   : 1,
-        func_args     : 5,
-        func_proto    : 1,
-        mode          : 4,
-        weak          : 1,
-        visibility    : 2,
-        fill          : 8; // 8 bits left to fit well in union below
+	unsigned
+	func_call : 3, /* calling convention (0..5), see below */
+			aligned : 5, /* alignement (0..16) */
+				  packed : 1,
+					   func_export : 1,
+								 func_import : 1,
+										   func_args : 5,
+												   func_proto : 1,
+															mode : 4,
+															   weak : 1,
+																  visibility : 2,
+																		   fill : 8; // 8 bits left to fit well in union below
 };
 
 /* GNUC attribute definition */
 typedef struct AttributeDef {
-    struct Attribute a;
-    struct Section *section;
-    int alias_target;    /* token */
+	struct Attribute a;
+	struct Section *section;
+	int alias_target;    /* token */
 } AttributeDef;
 
 /* symbol management */
 typedef struct Sym {
-    int v;    /* symbol token */
-    char *asm_label;    /* associated asm label */
-    union {
-        long r;    /* associated register */
-        struct Attribute a;
-    };
-    union {
-        long c;    /* associated number */
-        int *d;   /* define token stream */
-    };
-    CType type;    /* associated type */
-    union {
-        struct Sym *next; /* next related symbol */
-        long jnext; /* next jump label */
-    };
-    struct Sym *prev; /* prev symbol in stack */
-    struct Sym *prev_tok; /* previous symbol for this token */
+	int v;    /* symbol token */
+	char *asm_label;    /* associated asm label */
+	union {
+		long r;    /* associated register */
+		struct Attribute a;
+	};
+	union {
+		long c;    /* associated number */
+		int *d;   /* define token stream */
+	};
+	CType type;    /* associated type */
+	union {
+		struct Sym *next; /* next related symbol */
+		long jnext; /* next jump label */
+	};
+	struct Sym *prev; /* prev symbol in stack */
+	struct Sym *prev_tok; /* previous symbol for this token */
 } Sym;
 
 /* section definition */
 /* XXX: use directly ELF structure for parameters ? */
 /* special flag to indicate that the section should not be linked to
-   the other ones */
+the other ones */
 #define SHF_PRIVATE 0x80000000
 
 /* special flag, too */
 #define SECTION_ABS ((void *)1)
 
 typedef struct Section {
-    unsigned long data_offset; /* current data offset */
-    unsigned char *data;       /* section data */
-    unsigned long data_allocated; /* used for realloc() handling */
-    int sh_name;             /* elf section name (only used during output) */
-    int sh_num;              /* elf section number */
-    int sh_type;             /* elf section type */
-    int sh_flags;            /* elf section flags */
-    int sh_info;             /* elf section info */
-    int sh_addralign;        /* elf section alignment */
-    int sh_entsize;          /* elf entry size */
-    unsigned long sh_size;   /* section size (only used during output) */
-    addr_t sh_addr;          /* address at which the section is relocated */
-    unsigned long sh_offset; /* file offset */
-    int nb_hashed_syms;      /* used to resize the hash table */
-    struct Section *link;    /* link to another section */
-    struct Section *reloc;   /* corresponding section for relocation, if any */
-    struct Section *hash;     /* hash table for symbols */
-    struct Section *next;
-    char name[1];           /* section name */
+	unsigned long data_offset; /* current data offset */
+	unsigned char *data;       /* section data */
+	unsigned long data_allocated; /* used for realloc() handling */
+	int sh_name;             /* elf section name (only used during output) */
+	int sh_num;              /* elf section number */
+	int sh_type;             /* elf section type */
+	int sh_flags;            /* elf section flags */
+	int sh_info;             /* elf section info */
+	int sh_addralign;        /* elf section alignment */
+	int sh_entsize;          /* elf entry size */
+	unsigned long sh_size;   /* section size (only used during output) */
+	addr_t sh_addr;          /* address at which the section is relocated */
+	unsigned long sh_offset; /* file offset */
+	int nb_hashed_syms;      /* used to resize the hash table */
+	struct Section *link;    /* link to another section */
+	struct Section *reloc;   /* corresponding section for relocation, if any */
+	struct Section *hash;     /* hash table for symbols */
+	struct Section *next;
+	char name[1];           /* section name */
 } Section;
 
 typedef struct DLLReference {
-    int level;
-    void *handle;
-    char name[1];
+	int level;
+	void *handle;
+	char name[1];
 } DLLReference;
 
 /* -------------------------------------------------- */
@@ -485,249 +485,249 @@ typedef struct DLLReference {
 #define IO_BUF_SIZE 8192
 
 typedef struct BufferedFile {
-    uint8_t *buf_ptr;
-    uint8_t *buf_end;
-    int fd;
-    struct BufferedFile *prev;
-    int line_num;    /* current line number - here to simplify code */
-    int ifndef_macro;  /* #ifndef macro / #endif search */
-    int ifndef_macro_saved; /* saved ifndef_macro */
-    int *ifdef_stack_ptr; /* ifdef_stack value at the start of the file */
-    char filename[1024];    /* filename */
-    unsigned char buffer[IO_BUF_SIZE + 1]; /* extra size for CH_EOB char */
+	uint8_t *buf_ptr;
+	uint8_t *buf_end;
+	int fd;
+	struct BufferedFile *prev;
+	int line_num;    /* current line number - here to simplify code */
+	int ifndef_macro;  /* #ifndef macro / #endif search */
+	int ifndef_macro_saved; /* saved ifndef_macro */
+	int *ifdef_stack_ptr; /* ifdef_stack value at the start of the file */
+	char filename[1024];    /* filename */
+	unsigned char buffer[IO_BUF_SIZE + 1]; /* extra size for CH_EOB char */
 } BufferedFile;
 
 #define CH_EOB   '\\'       /* end of buffer or '\0' char in file */
 #define CH_EOF   (-1)   /* end of file */
 
 /* parsing state (used to save parser state to reparse part of the
-   source several times) */
+source several times) */
 typedef struct ParseState {
-    const int *macro_ptr;
-    int line_num;
-    int tok;
-    CValue tokc;
+	const int *macro_ptr;
+	int line_num;
+	int tok;
+	CValue tokc;
 } ParseState;
 
 /* used to record tokens */
 typedef struct TokenString {
-    int *str;
-    int len;
-    int allocated_len;
-    int last_line_num;
+	int *str;
+	int len;
+	int allocated_len;
+	int last_line_num;
 } TokenString;
 
 /* inline functions */
 typedef struct InlineFunc {
-    int *token_str;
-    Sym *sym;
-    char filename[1];
+	int *token_str;
+	Sym *sym;
+	char filename[1];
 } InlineFunc;
 
 /* include file cache, used to find files faster and also to eliminate
-   inclusion if the include file is protected by #ifndef ... #endif */
+inclusion if the include file is protected by #ifndef ... #endif */
 typedef struct CachedInclude {
-    int ifndef_macro;
-    int hash_next; /* -1 if none */
-    char filename[1]; /* path specified in #include */
+	int ifndef_macro;
+	int hash_next; /* -1 if none */
+	char filename[1]; /* path specified in #include */
 } CachedInclude;
 
 #define CACHED_INCLUDES_HASH_SIZE 512
 
 #ifdef CONFIG_TCC_ASM
 typedef struct ExprValue {
-    uint32_t v;
-    Sym *sym;
+	uint32_t v;
+	Sym *sym;
 } ExprValue;
 
 #define MAX_ASM_OPERANDS 30
 typedef struct ASMOperand {
-    int id; /* GCC 3 optionnal identifier (0 if number only supported */
-    char *constraint;
-    char asm_str[16]; /* computed asm string for operand */
-    SValue *vt; /* C value of the expression */
-    int ref_index; /* if >= 0, gives reference to a output constraint */
-    int input_index; /* if >= 0, gives reference to an input constraint */
-    int priority; /* priority, used to assign registers */
-    int reg; /* if >= 0, register number used for this operand */
-    int is_llong; /* true if double register value */
-    int is_memory; /* true if memory operand */
-    int is_rw;     /* for '+' modifier */
+	int id; /* GCC 3 optionnal identifier (0 if number only supported */
+	char *constraint;
+	char asm_str[16]; /* computed asm string for operand */
+	SValue *vt; /* C value of the expression */
+	int ref_index; /* if >= 0, gives reference to a output constraint */
+	int input_index; /* if >= 0, gives reference to an input constraint */
+	int priority; /* priority, used to assign registers */
+	int reg; /* if >= 0, register number used for this operand */
+	int is_llong; /* true if double register value */
+	int is_memory; /* true if memory operand */
+	int is_rw;     /* for '+' modifier */
 } ASMOperand;
 #endif
 
 struct sym_attr {
-    unsigned long got_offset;
-    unsigned long plt_offset;
+	unsigned long got_offset;
+	unsigned long plt_offset;
 #ifdef TCC_TARGET_ARM
-    unsigned char plt_thumb_stub:1;
+	unsigned char plt_thumb_stub : 1;
 #endif
 };
 
 struct TCCState {
 
-    int verbose; /* if true, display some information during compilation */
-    int nostdinc; /* if true, no standard headers are added */
-    int nostdlib; /* if true, no standard libraries are added */
-    int nocommon; /* if true, do not use common symbols for .bss data */
-    int static_link; /* if true, static linking is performed */
-    int rdynamic; /* if true, all symbols are exported */
-    int symbolic; /* if true, resolve symbols in the current module first */
-    int alacarte_link; /* if true, only link in referenced objects from archive */
+	int verbose; /* if true, display some information during compilation */
+	int nostdinc; /* if true, no standard headers are added */
+	int nostdlib; /* if true, no standard libraries are added */
+	int nocommon; /* if true, do not use common symbols for .bss data */
+	int static_link; /* if true, static linking is performed */
+	int rdynamic; /* if true, all symbols are exported */
+	int symbolic; /* if true, resolve symbols in the current module first */
+	int alacarte_link; /* if true, only link in referenced objects from archive */
 
-    char *tcc_lib_path; /* CONFIG_TCCDIR or -B option */
-    char *soname; /* as specified on the command line (-soname) */
-    char *rpath; /* as specified on the command line (-Wl,-rpath=) */
+	char *tcc_lib_path; /* CONFIG_TCCDIR or -B option */
+	char *soname; /* as specified on the command line (-soname) */
+	char *rpath; /* as specified on the command line (-Wl,-rpath=) */
 
-    /* output type, see TCC_OUTPUT_XXX */
-    int output_type;
-    /* output format, see TCC_OUTPUT_FORMAT_xxx */
-    int output_format;
+	/* output type, see TCC_OUTPUT_XXX */
+	int output_type;
+	/* output format, see TCC_OUTPUT_FORMAT_xxx */
+	int output_format;
 
-    /* C language options */
-    int char_is_unsigned;
-    int leading_underscore;
-    
-    /* warning switches */
-    int warn_write_strings;
-    int warn_unsupported;
-    int warn_error;
-    int warn_none;
-    int warn_implicit_function_declaration;
+	/* C language options */
+	int char_is_unsigned;
+	int leading_underscore;
 
-    /* compile with debug symbol (and use them if error during execution) */
-    int do_debug;
+	/* warning switches */
+	int warn_write_strings;
+	int warn_unsupported;
+	int warn_error;
+	int warn_none;
+	int warn_implicit_function_declaration;
+
+	/* compile with debug symbol (and use them if error during execution) */
+	int do_debug;
 #ifdef CONFIG_TCC_BCHECK
-    /* compile with built-in memory and bounds checker */
-    int do_bounds_check;
+	/* compile with built-in memory and bounds checker */
+	int do_bounds_check;
 #endif
 #ifdef TCC_TARGET_ARM
-    enum float_abi float_abi; /* float ABI of the generated code*/
+	enum float_abi float_abi; /* float ABI of the generated code*/
 #endif
 
-    addr_t text_addr; /* address of text section */
-    int has_text_addr;
+	addr_t text_addr; /* address of text section */
+	int has_text_addr;
 
-    unsigned long section_align; /* section alignment */
+	unsigned long section_align; /* section alignment */
 
-    char *init_symbol; /* symbols to call at load-time (not used currently) */
-    char *fini_symbol; /* symbols to call at unload-time (not used currently) */
-    
+	char *init_symbol; /* symbols to call at load-time (not used currently) */
+	char *fini_symbol; /* symbols to call at unload-time (not used currently) */
+
 #ifdef TCC_TARGET_I386
-    int seg_size; /* 32. Can be 16 with i386 assembler (.code16) */
+	int seg_size; /* 32. Can be 16 with i386 assembler (.code16) */
 #endif
 
-    /* array of all loaded dlls (including those referenced by loaded dlls) */
-    DLLReference **loaded_dlls;
-    int nb_loaded_dlls;
+	/* array of all loaded dlls (including those referenced by loaded dlls) */
+	DLLReference **loaded_dlls;
+	int nb_loaded_dlls;
 
-    /* include paths */
-    char **include_paths;
-    int nb_include_paths;
+	/* include paths */
+	char **include_paths;
+	int nb_include_paths;
 
-    char **sysinclude_paths;
-    int nb_sysinclude_paths;
+	char **sysinclude_paths;
+	int nb_sysinclude_paths;
 
-    /* library paths */
-    char **library_paths;
-    int nb_library_paths;
+	/* library paths */
+	char **library_paths;
+	int nb_library_paths;
 
-    /* crt?.o object path */
-    char **crt_paths;
-    int nb_crt_paths;
+	/* crt?.o object path */
+	char **crt_paths;
+	int nb_crt_paths;
 
-    /* error handling */
-    void *error_opaque;
-    void (*error_func)(void *opaque, const char *msg);
-    int error_set_jmp_enabled;
-    jmp_buf error_jmp_buf;
-    int nb_errors;
+	/* error handling */
+	void *error_opaque;
+	void(*error_func)(void *opaque, const char *msg);
+	int error_set_jmp_enabled;
+	jmp_buf error_jmp_buf;
+	int nb_errors;
 
-    /* output file for preprocessing (-E) */
-    FILE *ppfp;
+	/* output file for preprocessing (-E) */
+	FILE *ppfp;
 
-    /* for -MD/-MF: collected dependencies for this compilation */
-    char **target_deps;
-    int nb_target_deps;
+	/* for -MD/-MF: collected dependencies for this compilation */
+	char **target_deps;
+	int nb_target_deps;
 
-    /* compilation */
-    BufferedFile *include_stack[INCLUDE_STACK_SIZE];
-    BufferedFile **include_stack_ptr;
+	/* compilation */
+	BufferedFile *include_stack[INCLUDE_STACK_SIZE];
+	BufferedFile **include_stack_ptr;
 
-    int ifdef_stack[IFDEF_STACK_SIZE];
-    int *ifdef_stack_ptr;
+	int ifdef_stack[IFDEF_STACK_SIZE];
+	int *ifdef_stack_ptr;
 
-    /* included files enclosed with #ifndef MACRO */
-    int cached_includes_hash[CACHED_INCLUDES_HASH_SIZE];
-    CachedInclude **cached_includes;
-    int nb_cached_includes;
+	/* included files enclosed with #ifndef MACRO */
+	int cached_includes_hash[CACHED_INCLUDES_HASH_SIZE];
+	CachedInclude **cached_includes;
+	int nb_cached_includes;
 
-    /* #pragma pack stack */
-    int pack_stack[PACK_STACK_SIZE];
-    int *pack_stack_ptr;
+	/* #pragma pack stack */
+	int pack_stack[PACK_STACK_SIZE];
+	int *pack_stack_ptr;
 
-    /* inline functions are stored as token lists and compiled last
-       only if referenced */
-    struct InlineFunc **inline_fns;
-    int nb_inline_fns;
+	/* inline functions are stored as token lists and compiled last
+	only if referenced */
+	struct InlineFunc **inline_fns;
+	int nb_inline_fns;
 
-    /* sections */
-    Section **sections;
-    int nb_sections; /* number of sections, including first dummy section */
+	/* sections */
+	Section **sections;
+	int nb_sections; /* number of sections, including first dummy section */
 
-    Section **priv_sections;
-    int nb_priv_sections; /* number of private sections */
+	Section **priv_sections;
+	int nb_priv_sections; /* number of private sections */
 
-    /* got & plt handling */
-    Section *got;
-    Section *plt;
-    struct sym_attr *sym_attrs;
-    int nb_sym_attrs;
-    /* give the correspondance from symtab indexes to dynsym indexes */
-    int *symtab_to_dynsym;
+	/* got & plt handling */
+	Section *got;
+	Section *plt;
+	struct sym_attr *sym_attrs;
+	int nb_sym_attrs;
+	/* give the correspondance from symtab indexes to dynsym indexes */
+	int *symtab_to_dynsym;
 
-    /* temporary dynamic symbol sections (for dll loading) */
-    Section *dynsymtab_section;
-    /* exported dynamic symbol section */
-    Section *dynsym;
-    /* copy of the gobal symtab_section variable */
-    Section *symtab;
-    /* tiny assembler state */
-    Sym *asm_labels;
+	/* temporary dynamic symbol sections (for dll loading) */
+	Section *dynsymtab_section;
+	/* exported dynamic symbol section */
+	Section *dynsym;
+	/* copy of the gobal symtab_section variable */
+	Section *symtab;
+	/* tiny assembler state */
+	Sym *asm_labels;
 
 #ifdef TCC_TARGET_PE
-    /* PE info */
-    int pe_subsystem;
-    unsigned pe_file_align;
-    unsigned pe_stack_size;
+	/* PE info */
+	int pe_subsystem;
+	unsigned pe_file_align;
+	unsigned pe_stack_size;
 # ifdef TCC_TARGET_X86_64
-    Section *uw_pdata;
-    int uw_sym;
-    unsigned uw_offs;
+	Section *uw_pdata;
+	int uw_sym;
+	unsigned uw_offs;
 # endif
 #endif
 
 #ifdef TCC_IS_NATIVE
-    const char *runtime_main;
-    /* for tcc_relocate */
-    void *runtime_mem;
+	const char *runtime_main;
+	/* for tcc_relocate */
+	void *runtime_mem;
 # ifdef HAVE_SELINUX
-    void *write_mem;
-    unsigned long mem_size;
+	void *write_mem;
+	unsigned long mem_size;
 # endif
 #endif
 
-    /* used by main and tcc_parse_args only */
-    char **files; /* files seen on command line */
-    int nb_files; /* number thereof */
-    int nb_libraries; /* number of libs thereof */
-    char *outfile; /* output filename */
-    char *option_m; /* only -m32/-m64 handled */
-    int print_search_dirs; /* option */
-    int option_r; /* option -r */
-    int do_bench; /* option -bench */
-    int gen_deps; /* option -MD  */
-    char *deps_outfile; /* option -MF */
+	/* used by main and tcc_parse_args only */
+	char **files; /* files seen on command line */
+	int nb_files; /* number thereof */
+	int nb_libraries; /* number of libs thereof */
+	char *outfile; /* output filename */
+	char *option_m; /* only -m32/-m64 handled */
+	int print_search_dirs; /* option */
+	int option_r; /* option -r */
+	int do_bench; /* option -bench */
+	int gen_deps; /* option -MD  */
+	char *deps_outfile; /* option -MF */
 
 	//move out from global
 	/* use GNU C extensions */
@@ -753,11 +753,11 @@ struct TCCState {
 #define VT_LVAL      0x0100  /* var is an lvalue */
 #define VT_SYM       0x0200  /* a symbol value is added */
 #define VT_MUSTCAST  0x0400  /* value must be casted to be correct (used for
-                                char/short stored in integer registers) */
+char/short stored in integer registers) */
 #define VT_MUSTBOUND 0x0800  /* bound checking must be done before
-                                dereferencing value */
+dereferencing value */
 #define VT_BOUNDED   0x8000  /* value is bounded. The address of the
-                                bounding function call point is in vc */
+bounding function call point is in vc */
 #define VT_LVAL_BYTE     0x1000  /* lvalue is a byte */
 #define VT_LVAL_SHORT    0x2000  /* lvalue is a short */
 #define VT_LVAL_UNSIGNED 0x4000  /* lvalue is unsigned */
@@ -779,7 +779,7 @@ struct TCCState {
 #define VT_BOOL            11  /* ISOC99 boolean type */
 #define VT_LLONG           12  /* 64 bit integer */
 #define VT_LONG            13  /* long integer (NEVER USED as type, only
-                                  during parsing) */
+during parsing) */
 #define VT_QLONG           14  /* 128-bit integer. Only used for x86-64 ABI */
 #define VT_QFLOAT          15  /* 128-bit float. Only used for x86-64 ABI */
 #define VT_UNSIGNED    0x0010  /* unsigned type */
@@ -800,9 +800,9 @@ struct TCCState {
 #define VT_WEAK    0x00010000  /* weak symbol */
 #define VT_TLS     0x00040000  /* thread-local storage */
 #define VT_VIS_SHIFT    19     /* shift for symbol visibility, overlapping
-				  bitfield values, because bitfields never
-				  have linkage and hence never have
-				  visibility.  */
+bitfield values, because bitfields never
+have linkage and hence never have
+visibility.  */
 #define VT_VIS_SIZE      2     /* We have four visibilities.  */
 #define VT_VIS_MASK (((1 << VT_VIS_SIZE)-1) << VT_VIS_SHIFT)
 
@@ -868,7 +868,7 @@ struct TCCState {
 
 #define TOK_SHL   0x01 /* shift left */
 #define TOK_SAR   0x02 /* signed shift right */
-  
+
 /* assignement operators : normal operator or 0x80 */
 #define TOK_A_MOD 0xa5
 #define TOK_A_AND 0xa6
@@ -979,7 +979,7 @@ struct TCCState {
 #endif /* defined TCC_TARGET_I386 || defined TCC_TARGET_X86_64 */
 
 enum tcc_token {
-    TOK_LAST = TOK_IDENT - 1,
+	TOK_LAST = TOK_IDENT - 1,
 #define DEF(id, str) id,
 #include "tcctok.h"
 #undef DEF
@@ -990,27 +990,27 @@ enum tcc_token {
 /* space exlcuding newline */
 static inline int is_space(int ch)
 {
-    return ch == ' ' || ch == '\t' || ch == '\v' || ch == '\f' || ch == '\r';
+	return ch == ' ' || ch == '\t' || ch == '\v' || ch == '\f' || ch == '\r';
 }
 
 static inline int isid(int c)
 {
-    return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_';
+	return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_';
 }
 
 static inline int isnum(int c)
 {
-    return c >= '0' && c <= '9';
+	return c >= '0' && c <= '9';
 }
 
 static inline int isoct(int c)
 {
-    return c >= '0' && c <= '7';
+	return c >= '0' && c <= '7';
 }
 
 static inline int toup(int c)
 {
-    return (c >= 'a' && c <= 'z') ? c - 'a' + 'A' : c;
+	return (c >= 'a' && c <= 'z') ? c - 'a' + 'A' : c;
 }
 
 #ifndef PUB_FUNC
@@ -1038,7 +1038,7 @@ PUB_FUNC char *pstrcpy(char *buf, int buf_size, const char *s);
 PUB_FUNC char *pstrcat(char *buf, int buf_size, const char *s);
 PUB_FUNC char *pstrncpy(char *out, const char *in, size_t num);
 PUB_FUNC char *tcc_basename(const char *name);
-PUB_FUNC char *tcc_fileextension (const char *name);
+PUB_FUNC char *tcc_fileextension(const char *name);
 PUB_FUNC void tcc_free(void *ptr);
 PUB_FUNC void *tcc_malloc(unsigned long size);
 PUB_FUNC void *tcc_mallocz(unsigned long size);
@@ -1120,8 +1120,8 @@ ST_DATA TokenSym **table_ident;
 #define PARSE_FLAG_PREPROCESS 0x0001 /* activate preprocessing */
 #define PARSE_FLAG_TOK_NUM    0x0002 /* return numbers instead of TOK_PPNUM */
 #define PARSE_FLAG_LINEFEED   0x0004 /* line feed is returned as a
-                                        token. line feed is also
-                                        returned at eof */
+token. line feed is also
+returned at eof */
 #define PARSE_FLAG_ASM_COMMENTS 0x0008 /* '#' can be used for line comment */
 #define PARSE_FLAG_SPACES     0x0010 /* next() returns space tokens (for -E) */
 
@@ -1179,7 +1179,7 @@ ST_DATA Sym *local_label_stack;
 ST_DATA Sym *global_label_stack;
 ST_DATA Sym *define_stack;
 ST_DATA CType char_pointer_type, func_old_type, int_type, size_type;
-ST_DATA SValue __vstack[1+/*to make bcheck happy*/ VSTACK_SIZE], *vtop;
+ST_DATA SValue __vstack[1 +/*to make bcheck happy*/ VSTACK_SIZE], *vtop;
 #define vstack  (__vstack + 1)
 ST_DATA int rsym, anon_sym, ind, loc;
 
@@ -1246,11 +1246,11 @@ ST_FUNC int classify_x86_64_va_arg(CType *ty);
 #define ARMAG  "!<arch>\012"    /* For COFF and a.out archives */
 
 typedef struct {
-    unsigned int n_strx;         /* index into string table of name */
-    unsigned char n_type;         /* type of symbol */
-    unsigned char n_other;        /* misc info (usually empty) */
-    unsigned short n_desc;        /* description field */
-    unsigned int n_value;        /* value of symbol */
+	unsigned int n_strx;         /* index into string table of name */
+	unsigned char n_type;         /* type of symbol */
+	unsigned char n_other;        /* misc info (usually empty) */
+	unsigned short n_desc;        /* description field */
+	unsigned int n_value;        /* value of symbol */
 } Stab_Sym;
 
 ST_FUNC Section *new_symtab(TCCState *s1, const char *symtab_name, int sh_type, int sh_flags, const char *strtab_name, const char *hash_name, int hash_sh_flags);
