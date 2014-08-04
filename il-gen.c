@@ -41,7 +41,7 @@ enum {
     REG_ST2,
 };
 
-int reg_classes[NB_REGS] = {
+const int reg_classes[NB_REGS] = {
     /* ST0 */ RC_ST | RC_ST0,
     /* ST1 */ RC_ST | RC_ST1,
     /* ST2 */ RC_ST,
@@ -53,11 +53,11 @@ int reg_classes[NB_REGS] = {
 #define REG_FRET REG_ST0 /* float return register */
 
 /* defined if function parameters must be evaluated in reverse order */
-//#define INVERT_FUNC_PARAMS
+/* #define INVERT_FUNC_PARAMS */
 
 /* defined if structures are passed as pointers. Otherwise structures
    are directly pushed on stack. */
-//#define FUNC_STRUCT_PARAM_AS_PTR
+/* #define FUNC_STRUCT_PARAM_AS_PTR */
 
 /* pointer size, in bytes */
 #define PTR_SIZE 4
@@ -193,7 +193,7 @@ static void il_type_to_str(char *buf, int buf_size,
         pstrcat(buf, buf_size, tstr);
         break;
     case VT_STRUCT:
-        error("structures not handled yet");
+        tcc_error("structures not handled yet");
         break;
     case VT_FUNC:
         s = sym_find((unsigned)t >> VT_STRUCT_SHIFT);
@@ -387,7 +387,7 @@ void gfunc_start(GFuncContext *c, int func_call)
 void gfunc_param(GFuncContext *c)
 {
     if ((vtop->t & VT_BTYPE) == VT_STRUCT) {
-        error("structures passed as value not handled yet");
+        tcc_error("structures passed as value not handled yet");
     } else {
         /* simply push on stack */
         gv(RC_ST0);
@@ -441,6 +441,7 @@ void gfunc_prolog(int t)
     /* if the function returns a structure, then add an
        implicit pointer parameter */
     func_vt = sym->t;
+    func_var = (sym->c == FUNC_ELLIPSIS);
     if ((func_vt & VT_BTYPE) == VT_STRUCT) {
         func_vc = addr;
         addr++;
@@ -515,7 +516,7 @@ int gtst(int inv, int t)
             break;
         }
         t = out_opj(c, t);
-    } else if (v == VT_JMP || v == VT_JMPI) {
+    } else { /* VT_JMP || VT_JMPI */
         /* && or || optimization */
         if ((v & 1) == inv) {
             /* insert vtop->c jump list in t */
@@ -527,19 +528,6 @@ int gtst(int inv, int t)
         } else {
             t = gjmp(t);
             gsym(vtop->c.i);
-        }
-    } else {
-        if (is_float(vtop->t)) {
-            vpushi(0);
-            gen_op(TOK_NE);
-        }
-        if ((vtop->r & (VT_VALMASK | VT_LVAL | VT_FORWARD)) == VT_CONST) {
-            /* constant jmp optimization */
-            if ((vtop->c.i != 0) != inv) 
-                t = gjmp(t);
-        } else {
-            v = gv(RC_INT);
-            t = out_opj(IL_OP_BRTRUE - inv, t);
         }
     }
     vtop--;

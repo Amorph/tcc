@@ -21,24 +21,29 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <string.h>
-#if !defined(__FreeBSD__) && !defined(__DragonFly__) && !defined(__OpenBSD__)
+#if !defined(__FreeBSD__) && !defined(__FreeBSD_kernel__) \
+    && !defined(__DragonFly__) && !defined(__OpenBSD__) && !defined(__NetBSD__)
 #include <malloc.h>
 #endif
+#if !defined(_WIN32)
+#include <unistd.h>
+#endif
 
-//#define BOUND_DEBUG
+/* #define BOUND_DEBUG */
 
 /* define so that bound array is static (faster, but use memory if
    bound checking not used) */
-//#define BOUND_STATIC
+/* #define BOUND_STATIC */
 
 /* use malloc hooks. Currently the code cannot be reliable if no hooks */
 #define CONFIG_TCC_MALLOC_HOOKS
-
 #define HAVE_MEMALIGN
 
-#if defined(__FreeBSD__) || defined(__DragonFly__) || defined(__dietlibc__) \
-    || defined(__UCLIBC__) || defined(__OpenBSD__)
-#warning Bound checking not fully supported in this environment.
+#if defined(__FreeBSD__) || defined(__FreeBSD_kernel__) \
+    || defined(__DragonFly__) || defined(__dietlibc__) \
+    || defined(__UCLIBC__) || defined(__OpenBSD__) || defined(__NetBSD__) \
+    || defined(_WIN32) || defined(TCC_UCLIBC)
+#warning Bound checking does not support malloc (etc.) in this environment.
 #undef CONFIG_TCC_MALLOC_HOOKS
 #undef HAVE_MEMALIGN
 #endif
@@ -92,9 +97,6 @@ static void *saved_free_hook;
 static void *saved_realloc_hook;
 static void *saved_memalign_hook;
 #endif
-
-/* linker definitions */
-extern char _end;
 
 /* TCC definitions */
 extern char __bounds_start; /* start of static bounds table */
@@ -152,9 +154,6 @@ static void bound_alloc_error(void)
     bound_error("not enough memory for bound checking code");
 }
 
-/* currently, tcc cannot compile that because we use GNUC extensions */
-#if !defined(__TINYC__)
-
 /* return '(p + offset)' for pointer arithmetic (a pointer can reach
    the end of a region in this case */
 void * FASTCALL __bound_ptr_add(void *p, int offset)
@@ -203,17 +202,18 @@ void * FASTCALL __bound_ptr_indir ## dsize (void *p, int offset)        \
     return p + offset;                                                  \
 }
 
-#ifdef __i386__
+BOUND_PTR_INDIR(1)
+BOUND_PTR_INDIR(2)
+BOUND_PTR_INDIR(4)
+BOUND_PTR_INDIR(8)
+BOUND_PTR_INDIR(12)
+BOUND_PTR_INDIR(16)
+
 /* return the frame pointer of the caller */
 #define GET_CALLER_FP(fp)\
 {\
-    unsigned long *fp1;\
-    __asm__ __volatile__ ("movl %%ebp,%0" :"=g" (fp1));\
-    fp = fp1[0];\
+    fp = (unsigned long)__builtin_frame_address(1);\
 }
-#else
-#error put code to extract the calling frame pointer
-#endif
 
 /* called when entering a function to add all the local regions */
 void FASTCALL __bound_local_new(void *p1) 
@@ -245,34 +245,6 @@ void FASTCALL __bound_local_delete(void *p1)
         __bound_delete_region((void *)addr);
     }
 }
-
-#else
-
-void __bound_local_new(void *p) 
-{
-}
-void __bound_local_delete(void *p) 
-{
-}
-
-void *__bound_ptr_add(void *p, int offset)
-{
-    return p + offset;
-}
-
-#define BOUND_PTR_INDIR(dsize)                               \
-void *__bound_ptr_indir ## dsize (void *p, int offset)       \
-{                                                            \
-    return p + offset;                                       \
-}
-#endif
-
-BOUND_PTR_INDIR(1)
-BOUND_PTR_INDIR(2)
-BOUND_PTR_INDIR(4)
-BOUND_PTR_INDIR(8)
-BOUND_PTR_INDIR(12)
-BOUND_PTR_INDIR(16)
 
 static BoundEntry *__bound_new_page(void)
 {
@@ -406,11 +378,34 @@ void __bound_init(void)
     size = BOUND_T23_SIZE;
     mark_invalid(start, size);
 
-#if !defined(__TINYC__) && defined(CONFIG_TCC_MALLOC_HOOKS)
+#if defined(CONFIG_TCC_MALLOC_HOOKS)
     /* malloc zone is also marked invalid. can only use that with
-       hooks because all libs should use the same malloc. The solution
-       would be to build a new malloc for tcc. */
-    start = (unsigned long)&_end;
+     * hooks because all libs should use the same malloc. The solution
+     * would be to build a new malloc for tcc.
+     *
+     * usually heap (= malloc zone) comes right after bss, i.e. after _end, but
+     * not always - either if we are running from under `tcc -b -run`, or if
+     * address space randomization is turned on(a), heap start will be separated
+     * from bss end.
+     *
+     * So sbrk(0) will be a good approximation for start_brk:
+     *
+     *   - if we are a separately compiled program, __bound_init() runs early,
+     *     and sbrk(0) should be equal or very near to start_brk(b) (in case other
+     *     constructors malloc something), or
+     *
+     *   - if we are running from under `tcc -b -run`, sbrk(0) will return
+     *     start of heap portion which is under this program control, and not
+     *     mark as invalid earlier allocated memory.
+     *
+     *
+     * (a) /proc/sys/kernel/randomize_va_space = 2, on Linux;
+     *     usually turned on by default.
+     *
+     * (b) on Linux >= v3.3, the alternative is to read
+     *     start_brk from /proc/self/stat
+     */
+    start = (unsigned long)sbrk(0);
     size = 128 * 0x100000;
     mark_invalid(start, size);
 #endif
@@ -421,6 +416,18 @@ void __bound_init(void)
         __bound_new_region((void *)p[0], p[1]);
         p += 2;
     }
+}
+
+void __bound_main_arg(void **p)
+{
+    void *start = p;
+    while (*p++);
+    __bound_new_region(start, (void *) p - start);
+}
+
+void __bound_exit(void)
+{
+    restore_malloc_hooks();
 }
 
 static inline void add_region(BoundEntry *e, 
@@ -616,7 +623,7 @@ int __bound_delete_region(void *p)
             }
         }
         /* last page */
-        page = get_page(t2_end);
+        page = get_page(t1_end);
         e2 = (BoundEntry *)((char *)page + t2_end);
         for(e=page;e<e2;e++) {
             e->start = 0;
@@ -628,7 +635,7 @@ int __bound_delete_region(void *p)
 }
 
 /* return the size of the region starting at p, or EMPTY_SIZE if non
-   existant region. */
+   existent region. */
 static unsigned long get_region_size(void *p)
 {
     unsigned long addr = (unsigned long)p;
@@ -648,6 +655,9 @@ static unsigned long get_region_size(void *p)
 
 /* patched memory functions */
 
+/* force compiler to perform stores coded up to this point */
+#define barrier()   __asm__ __volatile__ ("": : : "memory")
+
 static void install_malloc_hooks(void)
 {
 #ifdef CONFIG_TCC_MALLOC_HOOKS
@@ -659,6 +669,8 @@ static void install_malloc_hooks(void)
     __free_hook = __bound_free;
     __realloc_hook = __bound_realloc;
     __memalign_hook = __bound_memalign;
+
+    barrier();
 #endif
 }
 
@@ -669,6 +681,8 @@ static void restore_malloc_hooks(void)
     __free_hook = saved_free_hook;
     __realloc_hook = saved_realloc_hook;
     __memalign_hook = saved_memalign_hook;
+
+    barrier();
 #endif
 }
 

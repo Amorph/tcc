@@ -28,13 +28,26 @@ Features:
 Documentation:
 -------------
 
-1) Installation on a i386 Linux host (for Windows read tcc-win32.txt)
+1) Installation on a i386/x86_64/arm Linux/OSX/FreeBSD host (for Windows read tcc-win32.txt)
+
+Note: For OSX and FreeBSD, gmake should be used instead of make.
 
    ./configure
    make
    make test
    make install
 
+Alternatively, out-of-tree builds are supported: you may use different
+directories to hold build objects, kept separate from your source tree:
+
+   mkdir _build
+   cd _build
+   ../configure
+   make
+   make test
+   make install
+
+Texi2html must be installed to compile the doc. 
 By default, tcc is installed in /usr/local/bin.
 ./configure --help  shows configuration options.
 
@@ -65,7 +78,8 @@ operations given a list of numbers (benchmark).
 ex3.c: compute fibonacci numbers (benchmark).
 
 ex4.c: more complicated: X11 program. Very complicated test in fact
-because standard headers are being used !
+because standard headers are being used ! As for ex1.c, can also be launched
+directly as a script: './ex4.c'.
 
 ex5.c: 'hello world' with standard glibc headers.
 

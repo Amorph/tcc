@@ -20,209 +20,19 @@
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
+#ifndef TINY_IMPDEF_GET_EXPORT_NAMES_ONLY
+
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include <stdio.h>
+#include <io.h>
+#include <malloc.h>
 
-/* Offset to PE file signature */
-#define NTSIGNATURE(a) ((LPVOID)((BYTE *)a                +  \
-                        ((PIMAGE_DOS_HEADER)a)->e_lfanew))
+char *get_export_names(int fd);
+#define tcc_free free
+#define tcc_realloc realloc
 
-/* MS-OS header identifies the NT PEFile signature dword;
-   the PEFILE header exists just after that dword. */
-#define PEFHDROFFSET(a) ((LPVOID)((BYTE *)a               +  \
-                         ((PIMAGE_DOS_HEADER)a)->e_lfanew +  \
-                             SIZE_OF_NT_SIGNATURE))
-
-/* PE optional header is immediately after PEFile header. */
-#define OPTHDROFFSET(a) ((LPVOID)((BYTE *)a               +  \
-                         ((PIMAGE_DOS_HEADER)a)->e_lfanew +  \
-                           SIZE_OF_NT_SIGNATURE           +  \
-                           sizeof (IMAGE_FILE_HEADER)))
-
-/* Section headers are immediately after PE optional header. */
-#define SECHDROFFSET(a) ((LPVOID)((BYTE *)a               +  \
-                         ((PIMAGE_DOS_HEADER)a)->e_lfanew +  \
-                           SIZE_OF_NT_SIGNATURE           +  \
-                           sizeof (IMAGE_FILE_HEADER)     +  \
-                           sizeof (IMAGE_OPTIONAL_HEADER)))
-
-
-#define SIZE_OF_NT_SIGNATURE 4
-
-/* -------------------------------------------------------------- */
-
-int WINAPI NumOfSections (
-    LPVOID lpFile)
-{
-    /* Number of sections is indicated in file header. */
-    return (int)
-        ((PIMAGE_FILE_HEADER)
-            PEFHDROFFSET(lpFile))->NumberOfSections;
-}
-
-
-/* -------------------------------------------------------------- */
-
-LPVOID WINAPI ImageDirectoryOffset (
-    LPVOID lpFile,
-    DWORD dwIMAGE_DIRECTORY)
-{
-    PIMAGE_OPTIONAL_HEADER poh;
-    PIMAGE_SECTION_HEADER psh;
-    int nSections = NumOfSections (lpFile);
-    int i = 0;
-    LPVOID VAImageDir;
-
-    /* Retrieve offsets to optional and section headers. */
-    poh = (PIMAGE_OPTIONAL_HEADER)OPTHDROFFSET (lpFile);
-    psh = (PIMAGE_SECTION_HEADER)SECHDROFFSET (lpFile);
-
-    /* Must be 0 thru (NumberOfRvaAndSizes-1). */
-    if (dwIMAGE_DIRECTORY >= poh->NumberOfRvaAndSizes)
-        return NULL;
-
-    /* Locate image directory's relative virtual address. */
-    VAImageDir = (LPVOID)poh->DataDirectory[dwIMAGE_DIRECTORY].VirtualAddress;
-
-    /* Locate section containing image directory. */
-    while (i++<nSections)
-    {
-        if (psh->VirtualAddress <= (DWORD)VAImageDir
-         && psh->VirtualAddress + psh->SizeOfRawData > (DWORD)VAImageDir)
-            break;
-        psh++;
-    }
-
-    if (i > nSections)
-        return NULL;
-
-    /* Return image import directory offset. */
-    return (LPVOID)(((int)lpFile +
-                     (int)VAImageDir - psh->VirtualAddress) +
-                    (int)psh->PointerToRawData);
-}
-
-/* -------------------------------------------------------------- */
-
-BOOL WINAPI GetSectionHdrByName (
-    LPVOID lpFile,
-    IMAGE_SECTION_HEADER *sh,
-    char *szSection)
-{
-    PIMAGE_SECTION_HEADER psh;
-    int nSections = NumOfSections (lpFile);
-    int i;
-
-    if ((psh = (PIMAGE_SECTION_HEADER)SECHDROFFSET (lpFile)) != NULL)
-    {
-        /* find the section by name */
-        for (i=0; i<nSections; i++)
-        {
-            if (!strcmp (psh->Name, szSection))
-            {
-                /* copy data to header */
-                memcpy ((LPVOID)sh, (LPVOID)psh, sizeof (IMAGE_SECTION_HEADER));
-                return TRUE;
-            }
-            else
-                psh++;
-        }
-    }
-    return FALSE;
-}
-
-/* -------------------------------------------------------------- */
-
-BOOL WINAPI GetSectionHdrByAddress (
-    LPVOID lpFile,
-    IMAGE_SECTION_HEADER *sh,
-    DWORD addr)
-{
-    PIMAGE_SECTION_HEADER psh;
-    int nSections = NumOfSections (lpFile);
-    int i;
-
-    if ((psh = (PIMAGE_SECTION_HEADER)SECHDROFFSET (lpFile)) != NULL)
-    {
-        /* find the section by name */
-        for (i=0; i<nSections; i++)
-        {
-            if (addr >= psh->VirtualAddress
-             && addr < psh->VirtualAddress + psh->SizeOfRawData)
-            {
-                /* copy data to header */
-                memcpy ((LPVOID)sh, (LPVOID)psh, sizeof (IMAGE_SECTION_HEADER));
-                return TRUE;
-            }
-            else
-                psh++;
-        }
-    }
-    return FALSE;
-}
-
-/* -------------------------------------------------------------- */
-
-int  WINAPI GetExportFunctionNames (
-    LPVOID lpFile,
-    HANDLE hHeap,
-    char **pszFunctions)
-{
-    IMAGE_SECTION_HEADER sh;
-    PIMAGE_EXPORT_DIRECTORY ped;
-    int *pNames, *pCnt;
-    char *pSrc, *pDest;
-    int i, nCnt;
-    DWORD VAImageDir;
-    PIMAGE_OPTIONAL_HEADER poh;
-    char *pOffset;
-
-    /* Get section header and pointer to data directory
-       for .edata section. */
-    if (NULL == (ped = (PIMAGE_EXPORT_DIRECTORY)
-        ImageDirectoryOffset (lpFile, IMAGE_DIRECTORY_ENTRY_EXPORT)))
-        return 0;
-
-    poh = (PIMAGE_OPTIONAL_HEADER)OPTHDROFFSET (lpFile);
-    VAImageDir = poh->DataDirectory[IMAGE_DIRECTORY_ENTRY_EXPORT].VirtualAddress;
-
-    if (FALSE == GetSectionHdrByAddress (lpFile, &sh, VAImageDir))
-        return 0;
-
-    pOffset = (char *)lpFile + (sh.PointerToRawData -  sh.VirtualAddress);
-
-    pNames = (int *)(pOffset + (DWORD)ped->AddressOfNames);
-
-    /* Figure out how much memory to allocate for all strings. */
-    nCnt = 1;
-    for (i=0, pCnt = pNames; i<(int)ped->NumberOfNames; i++)
-    {
-        pSrc = (pOffset + *pCnt++);
-        if (pSrc)
-            nCnt += strlen(pSrc)+1;
-    }
-
-    /* Allocate memory off heap for function names. */
-    pDest = *pszFunctions = HeapAlloc (hHeap, HEAP_ZERO_MEMORY, nCnt);
-
-    /* Copy all strings to buffer. */
-    for (i=0, pCnt = pNames; i<(int)ped->NumberOfNames; i++)
-    {
-        pSrc = (pOffset + *pCnt++);
-        if (pSrc) {
-            strcpy(pDest, pSrc);
-            pDest += strlen(pSrc)+1;
-        }
-    }
-    *pDest = 0;
-
-    return ped->NumberOfNames;
-}
-
-/* -------------------------------------------------------------- */
 /* extract the basename of a file */
-
 static char *file_basename(const char *name)
 {
     const char *p = strchr(name, 0);
@@ -234,160 +44,206 @@ static char *file_basename(const char *name)
     return (char*)p;
 }
 
-/* -------------------------------------------------------------- */
-
 int main(int argc, char **argv)
 {
-    HANDLE hHeap;
-    HANDLE hFile;
-    HANDLE hMapObject;
-    VOID *pMem;
-
-    int nCnt, ret, n;
-    char *pNames;
+    int ret, v, i;
     char infile[MAX_PATH];
-    char buffer[MAX_PATH];
     char outfile[MAX_PATH];
-    FILE *op;
-    char *p;
 
-    hHeap = NULL;
-    hFile = NULL;
-    hMapObject = NULL;
-    pMem = NULL;
+    static const char *ext[] = { ".dll", ".exe", NULL };
+    const char *file, **pp;
+    char path[MAX_PATH], *p, *q;
+    FILE *fp, *op;
+
     infile[0] = 0;
     outfile[0] = 0;
+    fp = op = NULL;
+    v = 0;
     ret = 1;
+    p = NULL;
 
-    for (n = 1; n < argc; ++n)
-    {
-        const char *a = argv[n];
+    for (i = 1; i < argc; ++i) {
+        const char *a = argv[i];
         if ('-' == a[0]) {
-            if (0 == strcmp(a, "-o")) {
-                if (++n == argc)
+            if (0 == strcmp(a, "-v")) {
+                v = 1;
+            } else if (0 == strcmp(a, "-o")) {
+                if (++i == argc)
                     goto usage;
-                strcpy(outfile, argv[n]);
-            }
-            else
+                strcpy(outfile, argv[i]);
+            } else
                 goto usage;
-
         } else if (0 == infile[0])
             strcpy(infile, a);
         else
             goto usage;
     }
 
-    if (0 == infile[0])
-    {
+    if (0 == infile[0]) {
 usage:
         fprintf(stderr,
-            "tiny_impdef creates an export definition file (.def) from a dll\n"
+            "tiny_impdef: create export definition file (.def) from a dll\n"
             "Usage: tiny_impdef library.dll [-o outputfile]\n"
             );
         goto the_end;
     }
 
-    if (SearchPath(NULL, infile, ".dll", sizeof buffer, buffer, NULL))
-        strcpy(infile, buffer);
-
     if (0 == outfile[0])
     {
-        char *p;
         strcpy(outfile, file_basename(infile));
-        p = strrchr(outfile, '.');
-        if (NULL == p)
-            p = strchr(outfile, 0);
-        strcpy(p, ".def");
+        q = strrchr(outfile, '.');
+        if (NULL == q)
+            q = strchr(outfile, 0);
+        strcpy(q, ".def");
     }
 
-    hFile = CreateFile(
-        infile,
-        GENERIC_READ,
-        FILE_SHARE_READ,
-        NULL,
-        OPEN_EXISTING,
-        0,
-        NULL
-        );
+    file = infile;
 
-    if (hFile == INVALID_HANDLE_VALUE)
-    {
-        fprintf(stderr, "No such file: %s\n", infile);
+#ifdef _WIN32
+    pp = ext;
+    do if (SearchPath(NULL, file, *pp, sizeof path, path, NULL)) {
+       file = path;
+       break;
+    } while (*pp++);
+#endif
+
+    fp = fopen(file, "rb");
+    if (NULL == fp) {
+        fprintf(stderr, "tiny_impdef: no such file: %s\n", infile);
         goto the_end;
     }
+    if (v)
+        printf("--> %s\n", file);
 
-
-    hMapObject = CreateFileMapping(
-        hFile,
-        NULL,
-        PAGE_READONLY,
-        0, 0,
-        NULL
-        );
-
-    if (NULL == hMapObject)
-    {
-        fprintf(stderr, "Could not create file mapping: %s\n", infile);
+    p = get_export_names(fileno(fp));
+    if (NULL == p) {
+        fprintf(stderr, "tiny_impdef: could not get exported function names.\n");
         goto the_end;
     }
-
-    pMem = MapViewOfFile(
-        hMapObject,     // object to map view of
-        FILE_MAP_READ,  // read access
-        0,              // high offset:  map from
-        0,              // low offset:   beginning
-        0);             // default: map entire file
-
-    if (NULL == pMem)
-    {
-        fprintf(stderr, "Could not map view of file: %s\n", infile);
-        goto the_end;
-    }
-
-    if (0 != strncmp(NTSIGNATURE(pMem), "PE", 2))
-    {
-        fprintf(stderr, "Not a PE file: %s\n", infile);
-        goto the_end;
-    }
-
-
-    hHeap = GetProcessHeap();
-    nCnt = GetExportFunctionNames(pMem, hHeap, &pNames);
-    if (0 == nCnt) {
-        fprintf(stderr, "Could not get exported function names: %s\n", infile);
-        goto the_end;
-    }
-
-    printf("--> %s\n", infile);
 
     op = fopen(outfile, "w");
-    if (NULL == op)
-    {
-        fprintf(stderr, "Could not create file: %s\n", outfile);
+    if (NULL == op) {
+        fprintf(stderr, "tiny_impdef: could not create output file: %s\n", outfile);
         goto the_end;
     }
 
-    printf("<-- %s\n", outfile);
-
-    fprintf(op, "LIBRARY %s\n\nEXPORTS\n", file_basename(infile));
-    for (n = 0, p = pNames; n < nCnt; ++n)
-    {
-        fprintf(op, "%s\n", p);
-        while (*p++);
+    fprintf(op, "LIBRARY %s\n\nEXPORTS\n", file_basename(file));
+    for (q = p, i = 0; *q; ++i) {
+        fprintf(op, "%s\n", q);
+        q += strlen(q) + 1;
     }
+
+    if (v) {
+        printf("<-- %s\n", outfile);
+        printf("%d symbol(s) found\n", i);
+    }
+
     ret = 0;
 
 the_end:
-    if (pMem)
-        UnmapViewOfFile(pMem);
-
-    if (hMapObject)
-        CloseHandle(hMapObject);
-
-    if (hFile)
-        CloseHandle(hFile);
-
+    if (p)
+        free(p);
+    if (fp)
+        fclose(fp);
+    if (op)
+        fclose(op);
     return ret;
+}
+
+int read_mem(int fd, unsigned offset, void *buffer, unsigned len)
+{
+    lseek(fd, offset, SEEK_SET);
+    return len == read(fd, buffer, len);
+}
+
+/* -------------------------------------------------------------- */
+
+#if defined TCC_TARGET_X86_64
+# define IMAGE_FILE_MACHINE 0x8664
+#elif defined TCC_TARGET_ARM
+# define IMAGE_FILE_MACHINE 0x01C0
+#elif 1 /* defined TCC_TARGET_I386 */
+# define IMAGE_FILE_MACHINE 0x014C
+#endif
+
+/* -------------------------------------------------------------- */
+#endif
+
+char *get_export_names(int fd)
+{
+    int l, i, n, n0;
+    char *p;
+
+    IMAGE_SECTION_HEADER ish;
+    IMAGE_EXPORT_DIRECTORY ied;
+    IMAGE_DOS_HEADER dh;
+    IMAGE_FILE_HEADER ih;
+    DWORD sig, ref, addr, ptr, namep;
+#ifdef TCC_TARGET_X86_64
+    IMAGE_OPTIONAL_HEADER64 oh;
+#else
+    IMAGE_OPTIONAL_HEADER32 oh;
+#endif
+    int pef_hdroffset, opt_hdroffset, sec_hdroffset;
+
+    n = n0 = 0;
+    p = NULL;
+
+    if (!read_mem(fd, 0, &dh, sizeof dh))
+        goto the_end;
+    if (!read_mem(fd, dh.e_lfanew, &sig, sizeof sig))
+        goto the_end;
+    if (sig != 0x00004550)
+        goto the_end;
+    pef_hdroffset = dh.e_lfanew + sizeof sig;
+    if (!read_mem(fd, pef_hdroffset, &ih, sizeof ih))
+        goto the_end;
+    if (IMAGE_FILE_MACHINE != ih.Machine)
+        goto the_end;
+    opt_hdroffset = pef_hdroffset + sizeof ih;
+    sec_hdroffset = opt_hdroffset + sizeof oh;
+    if (!read_mem(fd, opt_hdroffset, &oh, sizeof oh))
+        goto the_end;
+
+    if (IMAGE_DIRECTORY_ENTRY_EXPORT >= oh.NumberOfRvaAndSizes)
+        goto the_end;
+
+    addr = oh.DataDirectory[IMAGE_DIRECTORY_ENTRY_EXPORT].VirtualAddress;
+    //printf("addr: %08x\n", addr);
+    for (i = 0; i < ih.NumberOfSections; ++i) {
+        if (!read_mem(fd, sec_hdroffset + i * sizeof ish, &ish, sizeof ish))
+            goto the_end;
+        //printf("vaddr: %08x\n", ish.VirtualAddress);
+        if (addr >= ish.VirtualAddress && addr < ish.VirtualAddress + ish.SizeOfRawData)
+            goto found;
+    }
+    goto the_end;
+
+found:
+    ref = ish.VirtualAddress - ish.PointerToRawData;
+    if (!read_mem(fd, addr - ref, &ied, sizeof ied))
+        goto the_end;
+
+    namep = ied.AddressOfNames - ref;
+    for (i = 0; i < ied.NumberOfNames; ++i) {
+        if (!read_mem(fd, namep, &ptr, sizeof ptr))
+            goto the_end;
+        namep += sizeof ptr;
+        for (l = 0;;) {
+            if (n+1 >= n0)
+                p = tcc_realloc(p, n0 = n0 ? n0 * 2 : 256);
+            if (!read_mem(fd, ptr - ref + l++, p + n, 1)) {
+                tcc_free(p), p = NULL;
+                goto the_end;
+            }
+            if (p[n++] == 0)
+                break;
+        }
+    }
+    if (p)
+        p[n] = 0;
+the_end:
+    return p;
 }
 
 /* -------------------------------------------------------------- */

@@ -1,7 +1,7 @@
 /*
  * TCC auto test program
  */
-#include "../config.h"
+#include "config.h"
 
 #if GCC_MAJOR >= 3
 
@@ -14,6 +14,23 @@
 /* gcc 2.95.3 does not handle correctly CR in strings or after strays */
 #define CORRECT_CR_HANDLING
 
+#endif
+
+#if defined(_WIN32)
+#define LONG_LONG_FORMAT "%lld"
+#define ULONG_LONG_FORMAT "%llu"
+#else
+#define LONG_LONG_FORMAT "%Ld"
+#define ULONG_LONG_FORMAT "%Lu"
+#endif
+
+// MinGW has 80-bit rather than 64-bit long double which isn't compatible with TCC or MSVC
+#if defined(_WIN32) && defined(__GNUC__)
+#define LONG_DOUBLE double
+#define LONG_DOUBLE_LITERAL(x) x
+#else
+#define LONG_DOUBLE long double
+#define LONG_DOUBLE_LITERAL(x) x ## L
 #endif
 
 /* deprecated and no longer supported in gcc 3.3 */
@@ -42,9 +59,11 @@
 
 #include "tcclib.h"
 
+void intdiv_test();
 void string_test();
 void expr_test();
 void macro_test();
+void recursive_macro_test();
 void scope_test();
 void forward_test();
 void funcptr_test();
@@ -76,12 +95,19 @@ void whitespace_test(void);
 void relocation_test(void);
 void old_style_function(void);
 void alloca_test(void);
+void c99_vla_test(int size1, int size2);
 void sizeof_test(void);
 void typeof_test(void);
 void local_label_test(void);
 void statement_expr_test(void);
 void asm_test(void);
 void builtin_test(void);
+void weak_test(void);
+void global_data_test(void);
+void cmp_comparison_test(void);
+void math_cmp_test(void);
+void callsave_test(void);
+void builtin_frame_address_test(void);
 
 int fib(int n);
 void num(int n);
@@ -99,6 +125,10 @@ int isid(int c);
 #define xglue(a, b) glue(a, b)
 #define HIGHLOW "hello"
 #define LOW LOW ", world"
+
+static int onetwothree = 123;
+#define onetwothree4 onetwothree
+#define onetwothree xglue(onetwothree,4)
 
 #define min(a, b) ((a) < (b) ? (a) : (b))
 
@@ -138,6 +168,71 @@ int qq(int x)
 #define wq_spin_lock spin_lock
 #define TEST2() wq_spin_lock(a)
 
+#define UINT_MAX ((unsigned) -1)
+
+void intdiv_test(void)
+{
+    printf("18/21=%u\n", 18/21);
+    printf("18%21=%u\n", 18%21);
+    printf("41/21=%u\n", 41/21);
+    printf("41%21=%u\n", 41%21);
+    printf("42/21=%u\n", 42/21);
+    printf("42%21=%u\n", 42%21);
+    printf("43/21=%u\n", 43/21);
+    printf("43%21=%u\n", 43%21);
+    printf("126/21=%u\n", 126/21);
+    printf("12%/21=%u\n", 126%21);
+    printf("131/21=%u\n", 131/21);
+    printf("131%21=%u\n", 131%21);
+    printf("(UINT_MAX/2+3)/2=%u\n", (UINT_MAX/2+3)/2);
+    printf("(UINT_MAX/2+3)%2=%u\n", (UINT_MAX/2+3)%2);
+
+    printf("18/-21=%u\n", 18/-21);
+    printf("18%-21=%u\n", 18%-21);
+    printf("41/-21=%u\n", 41/-21);
+    printf("41%-21=%u\n", 41%-21);
+    printf("42/-21=%u\n", 42/-21);
+    printf("42%-21=%u\n", 42%-21);
+    printf("43/-21=%u\n", 43/-21);
+    printf("43%-21=%u\n", 43%-21);
+    printf("126/-21=%u\n", 126/-21);
+    printf("12%/-21=%u\n", 126%-21);
+    printf("131/-21=%u\n", 131/-21);
+    printf("131%-21=%u\n", 131%-21);
+    printf("(UINT_MAX/2+3)/-2=%u\n", (UINT_MAX/2+3)/-2);
+    printf("(UINT_MAX/2+3)%-2=%u\n", (UINT_MAX/2+3)%-2);
+
+    printf("-18/21=%u\n", -18/21);
+    printf("-18%21=%u\n", -18%21);
+    printf("-41/21=%u\n", -41/21);
+    printf("-41%21=%u\n", -41%21);
+    printf("-42/21=%u\n", -42/21);
+    printf("-42%21=%u\n", -42%21);
+    printf("-43/21=%u\n", -43/21);
+    printf("-43%21=%u\n", -43%21);
+    printf("-126/21=%u\n", -126/21);
+    printf("-12%/21=%u\n", -126%21);
+    printf("-131/21=%u\n", -131/21);
+    printf("-131%21=%u\n", -131%21);
+    printf("-(UINT_MAX/2+3)/2=%u\n", (0-(UINT_MAX/2+3))/2);
+    printf("-(UINT_MAX/2+3)%2=%u\n", (0-(UINT_MAX/2+3))%2);
+
+    printf("-18/-21=%u\n", -18/-21);
+    printf("-18%-21=%u\n", -18%-21);
+    printf("-41/-21=%u\n", -41/-21);
+    printf("-41%-21=%u\n", -41%-21);
+    printf("-42/-21=%u\n", -42/-21);
+    printf("-42%-21=%u\n", -42%-21);
+    printf("-43/-21=%u\n", -43/-21);
+    printf("-43%-21=%u\n", -43%-21);
+    printf("-126/-21=%u\n", -126/-21);
+    printf("-12%/-21=%u\n", -126%-21);
+    printf("-131/-21=%u\n", -131/-21);
+    printf("-131%-21=%u\n", -131%-21);
+    printf("-(UINT_MAX/2+3)/-2=%u\n", (0-(UINT_MAX/2+3))/-2);
+    printf("-(UINT_MAX/2+3)%-2=%u\n", (0-(UINT_MAX/2+3))%-2);
+}
+
 void macro_test(void)
 {
     printf("macro:\n");
@@ -151,6 +246,8 @@ void macro_test(void)
     printf("s3=%s\n", str("c"));
     printf("s4=%s\n", str(a1));
     printf("B3=%d\n", B3);
+
+    printf("onetwothree=%d\n", onetwothree);
 
 #ifdef A
     printf("A defined\n");
@@ -240,7 +337,7 @@ void macro_test(void)
     printf("func='%s'\n", __FUNCTION__);
 
     /* complicated macros in glibc */
-    printf("INT64_MIN=%Ld\n", INT64_MIN);
+    printf("INT64_MIN=" LONG_LONG_FORMAT "\n", INT64_MIN);
     {
         int a;
         a = 1;
@@ -278,6 +375,38 @@ comment
     /* test function macro substitution when the function name is
        substituted */
     TEST2();
+
+    /* And again when the name and parenthes are separated by a
+       comment.  */
+    TEST2 /* the comment */ ();
+}
+
+
+static void print_num(char *fn, int line, int num) {
+    printf("fn %s, line %d, num %d\n", fn, line, num);
+}
+
+void recursive_macro_test(void)
+{
+
+#define ELF32_ST_TYPE(val)              ((val) & 0xf)
+#define ELF32_ST_INFO(bind, type)       (((bind) << 4) + ((type) & 0xf))
+#define STB_WEAK        2               /* Weak symbol */
+#define ELFW(type) ELF##32##_##type
+    printf("%d\n", ELFW(ST_INFO)(STB_WEAK, ELFW(ST_TYPE)(123)));
+
+#define WRAP(x) x
+    
+#define print_num(x) print_num(__FILE__,__LINE__,x)
+    print_num(123);
+    WRAP(print_num(123));
+    WRAP(WRAP(print_num(123)));
+
+static struct recursive_macro { int rm_field; } G;
+#define rm_field (G.rm_field)
+    printf("rm_field = %d\n", rm_field);
+    printf("rm_field = %d\n", WRAP(rm_field));
+    WRAP((printf("rm_field = %d %d\n", rm_field, WRAP(rm_field))));
 }
 
 int op(a,b)
@@ -356,6 +485,12 @@ void loop_test()
     } while (i < 10);
     printf("\n");
 
+    char count = 123;
+    /* c99 for loop init test */
+    for (size_t count = 1; count < 3; count++)
+        printf("count=%d\n", count);
+    printf("count = %d\n", count);
+
     /* break/continue tests */
     i = 0;
     while (1) {
@@ -388,6 +523,7 @@ void loop_test()
     printf("\n");
 }
 
+typedef int typedef_and_label;
 
 void goto_test()
 {
@@ -396,6 +532,8 @@ void goto_test()
 
     printf("goto:\n");
     i = 0;
+    /* This needs to parse as label, not as start of decl.  */
+ typedef_and_label:
  s_loop:
     if (i >= 10) 
         goto s_end;
@@ -500,6 +638,7 @@ int main(int argc, char **argv)
     string_test();
     expr_test();
     macro_test();
+    recursive_macro_test();
     scope_test();
     forward_test();
     funcptr_test();
@@ -531,12 +670,22 @@ int main(int argc, char **argv)
     relocation_test();
     old_style_function();
     alloca_test();
+    c99_vla_test(5, 2);
     sizeof_test();
     typeof_test();
     statement_expr_test();
     local_label_test();
     asm_test();
     builtin_test();
+#ifndef _WIN32
+    weak_test();
+#endif
+    global_data_test();
+    cmp_comparison_test();
+    math_cmp_test();
+    callsave_test();
+    builtin_frame_address_test();
+    intdiv_test();
     return 0; 
 }
 
@@ -569,9 +718,9 @@ void scope_test()
     printf("g5=%d\n", g);
 }
 
-void array_test(int a[4])
+void array_test()
 {
-    int i, j;
+    int i, j, a[4];
 
     printf("array:\n");
     printf("sizeof(a) = %d\n", sizeof(a));
@@ -592,6 +741,8 @@ void array_test(int a[4])
         printf(" %3d", ((int *)tab2)[i]);
     }
     printf("\n");
+    printf("sizeof(size_t)=%d\n", sizeof(size_t));
+    printf("sizeof(ptrdiff_t)=%d\n", sizeof(ptrdiff_t));
 }
 
 void expr_test()
@@ -1049,6 +1200,7 @@ void num(int n)
         printf("%c", *p);
     }
     printf("\n");
+    free(tab);
 }
 
 /* structure assignment tests */
@@ -1059,9 +1211,9 @@ struct structa1 {
 
 struct structa1 ssta1;
 
-void struct_assign_test1(struct structa1 s1, int t)
+void struct_assign_test1(struct structa1 s1, int t, float f)
 {
-    printf("%d %d %d\n", s1.f1, s1.f2, t);
+    printf("%d %d %d %f\n", s1.f1, s1.f2, t, f);
 }
 
 struct structa1 struct_assign_test2(struct structa1 s1, int t)
@@ -1073,25 +1225,38 @@ struct structa1 struct_assign_test2(struct structa1 s1, int t)
 
 void struct_assign_test(void)
 {
-    struct structa1 lsta1, lsta2;
+    struct S {
+      struct structa1 lsta1, lsta2;
+      int i;
+    } s, *ps;
     
+    ps = &s;
+    ps->i = 4;
 #if 0
     printf("struct_assign_test:\n");
 
-    lsta1.f1 = 1;
-    lsta1.f2 = 2;
-    printf("%d %d\n", lsta1.f1, lsta1.f2);
-    lsta2 = lsta1;
-    printf("%d %d\n", lsta2.f1, lsta2.f2);
+    s.lsta1.f1 = 1;
+    s.lsta1.f2 = 2;
+    printf("%d %d\n", s.lsta1.f1, s.lsta1.f2);
+    s.lsta2 = s.lsta1;
+    printf("%d %d\n", s.lsta2.f1, s.lsta2.f2);
 #else
-    lsta2.f1 = 1;
-    lsta2.f2 = 2;
+    s.lsta2.f1 = 1;
+    s.lsta2.f2 = 2;
 #endif
-    struct_assign_test1(lsta2, 3);
+    struct_assign_test1(ps->lsta2, 3, 4.5);
     
-    printf("before call: %d %d\n", lsta2.f1, lsta2.f2);
-    lsta2 = struct_assign_test2(lsta2, 4);
-    printf("after call: %d %d\n", lsta2.f1, lsta2.f2);
+    printf("before call: %d %d\n", s.lsta2.f1, s.lsta2.f2);
+    ps->lsta2 = struct_assign_test2(ps->lsta2, ps->i);
+    printf("after call: %d %d\n", ps->lsta2.f1, ps->lsta2.f2);
+
+    static struct {
+        void (*elem)();
+    } t[] = {
+        /* XXX: we should allow this even without braces */
+        { struct_assign_test }
+    };
+    printf("%d\n", struct_assign_test == t[0].elem);
 }
 
 /* casts to short/char */
@@ -1218,6 +1383,44 @@ int sinit18[10] = {
     [8] = 10,
 };
 
+struct complexinit0 {
+    int a;
+    int b;
+};
+
+struct complexinit {
+    int a;
+    const struct complexinit0 *b;
+};
+
+const static struct complexinit cix[] = {
+    [0] = {
+	.a = 2000,
+	.b = (const struct complexinit0[]) {
+		{ 2001, 2002 },
+		{ 2003, 2003 },
+		{}
+	}
+    }
+};
+
+struct complexinit2 {
+	int a;
+	int b[];
+};
+
+struct complexinit2 cix20;
+
+struct complexinit2 cix21 = {
+	.a = 3000,
+	.b = { 3001, 3002, 3003 }
+};
+
+struct complexinit2 cix22 = {
+	.a = 4000,
+	.b = { 4001, 4002, 4003, 4004, 4005, 4006 }
+};
+
 void init_test(void)
 {
     int linit1 = 2;
@@ -1310,6 +1513,14 @@ void init_test(void)
     for(i=0;i<10;i++)
         printf("%x ", sinit18[i]);
     printf("\n");
+    /* complex init check */
+    printf("cix: %d %d %d %d %d %d %d\n",
+	cix[0].a,
+	cix[0].b[0].a, cix[0].b[0].b,
+	cix[0].b[1].a, cix[0].b[1].b,
+	cix[0].b[2].a, cix[0].b[2].b);
+    printf("cix2: %d %d\n", cix21.b[2], cix22.b[5]);
+    printf("sizeof cix20 %d, cix21 %d, sizeof cix22 %d\n", sizeof cix20, sizeof cix21, sizeof cix22);
 }
 
 
@@ -1358,6 +1569,8 @@ void c99_bool_test(void)
 void bitfield_test(void)
 {
     int a;
+    short sa;
+    unsigned char ca;
     struct sbf1 {
         int f1 : 3;
         int : 2;
@@ -1379,6 +1592,9 @@ void bitfield_test(void)
     st1.f5++;
     printf("%d %d %d %d %d\n",
            st1.f1, st1.f2, st1.f3, st1.f4, st1.f5);
+    sa = st1.f5;
+    ca = st1.f5;
+    printf("%d %d\n", sa, ca);
 
     st1.f1 = 7;
     if (st1.f1 == -1) 
@@ -1415,10 +1631,16 @@ void bitfield_test(void)
 
 /* declare strto* functions as they are C99 */
 double strtod(const char *nptr, char **endptr);
-float strtof(const char *nptr, char **endptr);
-long double strtold(const char *nptr, char **endptr);
 
-#define FTEST(prefix, type, fmt)\
+#if defined(_WIN32)
+float strtof(const char *nptr, char **endptr) {return (float)strtod(nptr, endptr);}
+LONG_DOUBLE strtold(const char *nptr, char **endptr) {return (LONG_DOUBLE)strtod(nptr, endptr);}
+#else
+float strtof(const char *nptr, char **endptr);
+LONG_DOUBLE strtold(const char *nptr, char **endptr);
+#endif
+
+#define FTEST(prefix, typename, type, fmt)\
 void prefix ## cmp(type a, type b)\
 {\
     printf("%d %d %d %d %d %d\n",\
@@ -1446,28 +1668,39 @@ void prefix ## fcast(type a)\
 {\
     float fa;\
     double da;\
-    long double la;\
+    LONG_DOUBLE la;\
     int ia;\
+    long long llia;\
     unsigned int ua;\
+    unsigned long long llua;\
     type b;\
     fa = a;\
     da = a;\
     la = a;\
     printf("ftof: %f %f %Lf\n", fa, da, la);\
     ia = (int)a;\
+    llia = (long long)a;\
+    a = (a >= 0) ? a : -a;\
     ua = (unsigned int)a;\
-    printf("ftoi: %d %u\n", ia, ua);\
+    llua = (unsigned long long)a;\
+    printf("ftoi: %d %u %lld %llu\n", ia, ua, llia, llua);\
     ia = -1234;\
     ua = 0x81234500;\
+    llia = -0x123456789012345LL;\
+    llua = 0xf123456789012345LLU;\
     b = ia;\
     printf("itof: " fmt "\n", b);\
     b = ua;\
     printf("utof: " fmt "\n", b);\
+    b = llia;\
+    printf("lltof: " fmt "\n", b);\
+    b = llua;\
+    printf("ulltof: " fmt "\n", b);\
 }\
 \
 float prefix ## retf(type a) { return a; }\
 double prefix ## retd(type a) { return a; }\
-long double prefix ## retld(type a) { return a; }\
+LONG_DOUBLE prefix ## retld(type a) { return a; }\
 \
 void prefix ## call(void)\
 {\
@@ -1477,20 +1710,50 @@ void prefix ## call(void)\
     printf("strto%s: %f\n", #prefix, (double)strto ## prefix("1.2", NULL));\
 }\
 \
+void prefix ## signed_zeros(void) \
+{\
+  type x = 0.0, y = -0.0, n, p;\
+  if (x == y)\
+    printf ("Test 1.0 / x != 1.0 / y  returns %d (should be 1).\n",\
+            1.0 / x != 1.0 / y);\
+  else\
+    printf ("x != y; this is wrong!\n");\
+\
+  n = -x;\
+  if (x == n)\
+    printf ("Test 1.0 / x != 1.0 / -x returns %d (should be 1).\n",\
+            1.0 / x != 1.0 / n);\
+  else\
+    printf ("x != -x; this is wrong!\n");\
+\
+  p = +y;\
+  if (x == p)\
+    printf ("Test 1.0 / x != 1.0 / +y returns %d (should be 1).\n",\
+            1.0 / x != 1.0 / p);\
+  else\
+    printf ("x != +y; this is wrong!\n");\
+  p = -y;\
+  if (x == p)\
+    printf ("Test 1.0 / x != 1.0 / -y returns %d (should be 0).\n",\
+            1.0 / x != 1.0 / p);\
+  else\
+    printf ("x != -y; this is wrong!\n");\
+}\
 void prefix ## test(void)\
 {\
-    printf("testing '%s'\n", #type);\
+    printf("testing '%s'\n", #typename);\
     prefix ## cmp(1, 2.5);\
     prefix ## cmp(2, 1.5);\
     prefix ## cmp(1, 1);\
     prefix ## fcast(234.6);\
     prefix ## fcast(-2334.6);\
     prefix ## call();\
+    prefix ## signed_zeros();\
 }
 
-FTEST(f, float, "%f")
-FTEST(d, double, "%f")
-FTEST(ld, long double, "%Lf")
+FTEST(f, float, float, "%f")
+FTEST(d, double, double, "%f")
+FTEST(ld, long double, LONG_DOUBLE, "%Lf")
 
 double ftab1[3] = { 1.2, 3.4, -5.6 };
 
@@ -1505,7 +1768,7 @@ void float_test(void)
     printf("float_test:\n");
     printf("sizeof(float) = %d\n", sizeof(float));
     printf("sizeof(double) = %d\n", sizeof(double));
-    printf("sizeof(long double) = %d\n", sizeof(long double));
+    printf("sizeof(long double) = %d\n", sizeof(LONG_DOUBLE));
     ftest();
     dtest();
     ldtest();
@@ -1564,19 +1827,19 @@ void lloptest(long long a, long long b)
     ua = a;
     ub = b;
     /* arith */
-    printf("arith: %Ld %Ld %Ld\n",
+    printf("arith: " LONG_LONG_FORMAT " " LONG_LONG_FORMAT " " LONG_LONG_FORMAT "\n",
            a + b,
            a - b,
            a * b);
     
     if (b != 0) {
-        printf("arith1: %Ld %Ld\n",
+        printf("arith1: " LONG_LONG_FORMAT " " LONG_LONG_FORMAT "\n",
            a / b,
            a % b);
     }
 
     /* binary */
-    printf("bin: %Ld %Ld %Ld\n",
+    printf("bin: " LONG_LONG_FORMAT " " LONG_LONG_FORMAT " " LONG_LONG_FORMAT "\n",
            a & b,
            a | b,
            a ^ b);
@@ -1601,25 +1864,25 @@ void lloptest(long long a, long long b)
     /* arith2 */
     a++;
     b++;
-    printf("arith2: %Ld %Ld\n", a, b);
-    printf("arith2: %Ld %Ld\n", a++, b++);
-    printf("arith2: %Ld %Ld\n", --a, --b);
-    printf("arith2: %Ld %Ld\n", a, b);
+    printf("arith2: " LONG_LONG_FORMAT " " LONG_LONG_FORMAT "\n", a, b);
+    printf("arith2: " LONG_LONG_FORMAT " " LONG_LONG_FORMAT "\n", a++, b++);
+    printf("arith2: " LONG_LONG_FORMAT " " LONG_LONG_FORMAT "\n", --a, --b);
+    printf("arith2: " LONG_LONG_FORMAT " " LONG_LONG_FORMAT "\n", a, b);
     b = ub = 0;
     printf("not: %d %d %d %d\n", !a, !ua, !b, !ub);
 }
 
 void llshift(long long a, int b)
 {
-    printf("shift: %Ld %Ld %Ld\n",
+    printf("shift: " LONG_LONG_FORMAT " " LONG_LONG_FORMAT " " LONG_LONG_FORMAT "\n",
            (unsigned long long)a >> b,
            a >> b,
            a << b);
-    printf("shiftc: %Ld %Ld %Ld\n",
+    printf("shiftc: " LONG_LONG_FORMAT " " LONG_LONG_FORMAT " " LONG_LONG_FORMAT "\n",
            (unsigned long long)a >> 3,
            a >> 3,
            a << 3);
-    printf("shiftc: %Ld %Ld %Ld\n",
+    printf("shiftc: " LONG_LONG_FORMAT " " LONG_LONG_FORMAT " " LONG_LONG_FORMAT "\n",
            (unsigned long long)a >> 35,
            a >> 35,
            a << 35);
@@ -1629,14 +1892,14 @@ void llfloat(void)
 {
     float fa;
     double da;
-    long double lda;
+    LONG_DOUBLE lda;
     long long la, lb, lc;
     unsigned long long ula, ulb, ulc;
     la = 0x12345678;
     ula = 0x72345678;
     la = (la << 20) | 0x12345;
     ula = ula << 33;
-    printf("la=%Ld ula=%Lu\n", la, ula);
+    printf("la=" LONG_LONG_FORMAT " ula=" ULONG_LONG_FORMAT "\n", la, ula);
 
     fa = la;
     da = la;
@@ -1646,7 +1909,7 @@ void llfloat(void)
     la = fa;
     lb = da;
     lc = lda;
-    printf("ftoll: %Ld %Ld %Ld\n", la, lb, lc);
+    printf("ftoll: " LONG_LONG_FORMAT " " LONG_LONG_FORMAT " " LONG_LONG_FORMAT "\n", la, lb, lc);
 
     fa = ula;
     da = ula;
@@ -1656,7 +1919,7 @@ void llfloat(void)
     ula = fa;
     ulb = da;
     ulc = lda;
-    printf("ftoull: %Lu %Lu %Lu\n", ula, ulb, ulc);
+    printf("ftoull: " ULONG_LONG_FORMAT " " ULONG_LONG_FORMAT " " ULONG_LONG_FORMAT "\n", ula, ulb, ulc);
 }
 
 long long llfunc1(int a)
@@ -1685,14 +1948,14 @@ void longlong_test(void)
     ua = -2;
     a = ia;
     b = ua;
-    printf("%Ld %Ld\n", a, b);
-    printf("%Ld %Ld %Ld %Lx\n", 
+    printf(LONG_LONG_FORMAT " " LONG_LONG_FORMAT "\n", a, b);
+    printf(LONG_LONG_FORMAT " " LONG_LONG_FORMAT " " LONG_LONG_FORMAT " %Lx\n", 
            (long long)1, 
            (long long)-2,
            1LL,
            0x1234567812345679);
     a = llfunc1(-3);
-    printf("%Ld\n", a);
+    printf(LONG_LONG_FORMAT "\n", a);
 
     lloptest(1000, 23);
     lloptest(0xff, 0x1234);
@@ -1733,57 +1996,55 @@ void longlong_test(void)
     b = 4294967295LL;
     printf("%d %d %d %d\n", a > b, a < b, a >= b, a <= b);
 
-    printf("%Ld\n", 0x123456789LLU);
+    printf(LONG_LONG_FORMAT "\n", 0x123456789LLU);
 }
 
 void manyarg_test(void)
 {
-    long double ld = 1234567891234LL;
+    LONG_DOUBLE ld = 1234567891234LL;
     printf("manyarg_test:\n");
     printf("%d %d %d %d %d %d %d %d %f %f %f %f %f %f %f %f %f %f\n",
            1, 2, 3, 4, 5, 6, 7, 8,
            0.1, 1.2, 2.3, 3.4, 4.5, 5.6, 6.7, 7.8, 8.9, 9.0);
     printf("%d %d %d %d %d %d %d %d %f %f %f %f %f %f %f %f %f %f "
-           "%Ld %Ld %f %f\n",
+           LONG_LONG_FORMAT " " LONG_LONG_FORMAT " %f %f\n",
            1, 2, 3, 4, 5, 6, 7, 8,
            0.1, 1.2, 2.3, 3.4, 4.5, 5.6, 6.7, 7.8, 8.9, 9.0,
            1234567891234LL, 987654321986LL,
            42.0, 43.0);
     printf("%Lf %d %d %d %d %d %d %d %d %f %f %f %f %f %f %f %f %f %f "
-           "%Ld %Ld %f %f\n",
+           LONG_LONG_FORMAT " " LONG_LONG_FORMAT " %f %f\n",
            ld, 1, 2, 3, 4, 5, 6, 7, 8,
            0.1, 1.2, 2.3, 3.4, 4.5, 5.6, 6.7, 7.8, 8.9, 9.0,
            1234567891234LL, 987654321986LL,
            42.0, 43.0);
-    /* XXX: known bug of x86-64 */
-#ifndef __x86_64__
     printf("%d %d %d %d %d %d %d %d %Lf\n",
            1, 2, 3, 4, 5, 6, 7, 8, ld);
     printf("%d %d %d %d %d %d %d %d %f %f %f %f %f %f %f %f %f %f "
-           "%Ld %Ld %f %f %Lf\n",
+           LONG_LONG_FORMAT " " LONG_LONG_FORMAT "%f %f %Lf\n",
            1, 2, 3, 4, 5, 6, 7, 8,
            0.1, 1.2, 2.3, 3.4, 4.5, 5.6, 6.7, 7.8, 8.9, 9.0,
            1234567891234LL, 987654321986LL,
            42.0, 43.0, ld);
     printf("%d %d %d %d %d %d %d %d %f %f %f %f %f %f %f %f %f %f "
-           "%Lf %Ld %Ld %f %f %Lf\n",
+           "%Lf " LONG_LONG_FORMAT " " LONG_LONG_FORMAT " %f %f %Lf\n",
            1, 2, 3, 4, 5, 6, 7, 8,
            0.1, 1.2, 2.3, 3.4, 4.5, 5.6, 6.7, 7.8, 8.9, 9.0,
            ld, 1234567891234LL, 987654321986LL,
            42.0, 43.0, ld);
-#endif
 }
 
 void vprintf1(const char *fmt, ...)
 {
-    va_list ap;
+    va_list ap, aq;
     const char *p;
     int c, i;
     double d;
     long long ll;
-    long double ld;
+    LONG_DOUBLE ld;
 
-    va_start(ap, fmt);
+    va_start(aq, fmt);
+    va_copy(ap, aq);
     
     p = fmt;
     for(;;) {
@@ -1806,10 +2067,10 @@ void vprintf1(const char *fmt, ...)
                 break;
             case 'l':
                 ll = va_arg(ap, long long);
-                printf("%Ld", ll);
+                printf(LONG_LONG_FORMAT, ll);
                 break;
             case 'F':
-                ld = va_arg(ap, long double);
+                ld = va_arg(ap, LONG_DOUBLE);
                 printf("%Lf", ld);
                 break;
             }
@@ -1819,22 +2080,40 @@ void vprintf1(const char *fmt, ...)
         }
     }
  the_end:
+    va_end(aq);
     va_end(ap);
 }
 
+struct myspace {
+    short int profile;
+};
+
+void stdarg_for_struct(struct myspace bob, ...)
+{
+    struct myspace george, bill;
+    va_list ap;
+    short int validate;
+
+    va_start(ap, bob);
+    bill     = va_arg(ap, struct myspace);
+    george   = va_arg(ap, struct myspace);
+    validate = va_arg(ap, int);
+    printf("stdarg_for_struct: %d %d %d %d\n",
+           bob.profile, bill.profile, george.profile, validate);
+    va_end(ap);
+}
 
 void stdarg_test(void)
 {
-    long double ld = 1234567891234LL;
+    LONG_DOUBLE ld = 1234567891234LL;
+    struct myspace bob;
+
     vprintf1("%d %d %d\n", 1, 2, 3);
     vprintf1("%f %d %f\n", 1.0, 2, 3.0);
     vprintf1("%l %l %d %f\n", 1234567891234LL, 987654321986LL, 3, 1234.0);
-    vprintf1("%F %F %F\n", 1.2L, 2.3L, 3.4L);
-#ifdef __x86_64__
-    /* a bug of x86's TCC */
+    vprintf1("%F %F %F\n", LONG_DOUBLE_LITERAL(1.2), LONG_DOUBLE_LITERAL(2.3), LONG_DOUBLE_LITERAL(3.4));
     vprintf1("%d %f %l %F %d %f %l %F\n",
-             1, 1.2, 3L, 4.5L, 6, 7.8, 9L, 0.1L);
-#endif
+             1, 1.2, 3LL, LONG_DOUBLE_LITERAL(4.5), 6, 7.8, 9LL, LONG_DOUBLE_LITERAL(0.1));
     vprintf1("%d %d %d %d %d %d %d %d %f %f %f %f %f %f %f %f\n",
              1, 2, 3, 4, 5, 6, 7, 8,
              0.1, 1.2, 2.3, 3.4, 4.5, 5.6, 6.7, 7.8);
@@ -1867,6 +2146,9 @@ void stdarg_test(void)
              0.1, 1.2, 2.3, 3.4, 4.5, 5.6, 6.7, 7.8, 8.9, 9.0,
              ld, 1234567891234LL, 987654321986LL,
              42.0, 43.0, ld);
+
+    bob.profile = 42;
+    stdarg_for_struct(bob, bob, bob, bob.profile);
 }
 
 void whitespace_test(void)
@@ -1939,7 +2221,7 @@ void old_style_function(void)
 
 void alloca_test()
 {
-#if defined __i386__ || defined __x86_64__
+#if defined __i386__ || defined __x86_64__ || defined __arm__
     char *p = alloca(16);
     strcpy(p,"123456789012345");
     printf("alloca: p is %s\n", p);
@@ -1948,6 +2230,67 @@ void alloca_test()
     printf("alloca: %s\n", strcpy(alloca(strlen(demo)+1),demo) );
 #endif
 }
+
+void *bounds_checking_is_enabled()
+{
+    char ca[10], *cp = ca-1;
+    return (ca != cp + 1) ? cp : NULL;
+}
+
+typedef int constant_negative_array_size_as_compile_time_assertion_idiom[(1 ? 2 : 0) - 1];
+
+void c99_vla_test(int size1, int size2)
+{
+#if defined __i386__ || defined __x86_64__
+    int size = size1 * size2;
+    int tab1[size][2], tab2[10][2];
+    void *tab1_ptr, *tab2_ptr, *bad_ptr;
+
+    /* "size" should have been 'captured' at tab1 declaration, 
+        so modifying it should have no effect on VLA behaviour. */
+    size = size-1;
+    
+    printf("Test C99 VLA 1 (sizeof): ");
+    printf("%s\n", (sizeof tab1 == size1 * size2 * 2 * sizeof(int)) ? "PASSED" : "FAILED");
+    tab1_ptr = tab1;
+    tab2_ptr = tab2;
+    printf("Test C99 VLA 2 (ptrs subtract): ");
+    printf("%s\n", (tab2 - tab1 == (tab2_ptr - tab1_ptr) / (sizeof(int) * 2)) ? "PASSED" : "FAILED");
+    printf("Test C99 VLA 3 (ptr add): ");
+    printf("%s\n", &tab1[5][1] == (tab1_ptr + (5 * 2 + 1) * sizeof(int)) ? "PASSED" : "FAILED");
+    printf("Test C99 VLA 4 (ptr access): ");
+    tab1[size1][1] = 42;
+    printf("%s\n", (*((int *) (tab1_ptr + (size1 * 2 + 1) * sizeof(int))) == 42) ? "PASSED" : "FAILED");
+
+    printf("Test C99 VLA 5 (bounds checking (might be disabled)): ");
+    if (bad_ptr = bounds_checking_is_enabled()) {
+        int *t1 = &tab1[size1 * size2 - 1][3];
+        int *t2 = &tab2[9][3];
+        printf("%s ", bad_ptr == t1 ? "PASSED" : "FAILED");
+        printf("%s ", bad_ptr == t2 ? "PASSED" : "FAILED");
+
+        char*c1 = 1 + sizeof(tab1) + (char*)tab1;
+        char*c2 = 1 + sizeof(tab2) + (char*)tab2;
+        printf("%s ", bad_ptr == c1 ? "PASSED" : "FAILED");
+        printf("%s ", bad_ptr == c2 ? "PASSED" : "FAILED");
+
+        int *i1 = tab1[-1];
+        int *i2 = tab2[-1];
+        printf("%s ", bad_ptr == i1 ? "PASSED" : "FAILED");
+        printf("%s ", bad_ptr == i2 ? "PASSED" : "FAILED");
+
+        int *x1 = tab1[size1 * size2 + 1];
+        int *x2 = tab2[10 + 1];
+        printf("%s ", bad_ptr == x1 ? "PASSED" : "FAILED");
+        printf("%s ", bad_ptr == x2 ? "PASSED" : "FAILED");
+    } else {
+        printf("PASSED PASSED PASSED PASSED PASSED PASSED PASSED PASSED ");
+    }
+    printf("\n");
+#endif
+}
+
+typedef __SIZE_TYPE__ uintptr_t;
 
 void sizeof_test(void)
 {
@@ -1968,6 +2311,20 @@ void sizeof_test(void)
     printf("a=%d\n", a);
     ptr = NULL;
     printf("sizeof(**ptr) = %d\n", sizeof (**ptr));
+
+    /* The type of sizeof should be as large as a pointer, actually
+       it should be size_t.  */
+    printf("sizeof(sizeof(int) = %d\n", sizeof(sizeof(int)));
+    uintptr_t t = 1;
+    uintptr_t t2;
+    /* Effectively <<32, but defined also on 32bit machines.  */
+    t <<= 16;
+    t <<= 16;
+    t++;
+    /* This checks that sizeof really can be used to manipulate 
+       uintptr_t objects, without truncation.  */
+    t2 = t & -sizeof(uintptr_t);
+    printf ("%lu %lu\n", t, t2);
 
     /* some alignof tests */
     printf("__alignof__(int) = %d\n", __alignof__(int));
@@ -2064,11 +2421,50 @@ __asm__ __volatile__(
 return dest;
 }
 
+static char * strncat2(char * dest,const char * src,size_t count)
+{
+int d0, d1, d2, d3;
+__asm__ __volatile__(
+	"repne scasb\n\t" /* one-line repne prefix + string op */
+	"decl %1\n\t"
+	"movl %8,%3\n"
+	"1:\tdecl %3\n\t"
+	"js 2f\n\t"
+	"lodsb\n\t"
+	"stosb\n\t"
+	"testb %%al,%%al\n\t"
+	"jne 1b\n"
+	"2:\txorl %2,%2\n\t"
+	"stosb"
+	: "=&S" (d0), "=&D" (d1), "=&a" (d2), "=&c" (d3)
+	: "0" (src),"1" (dest),"2" (0),"3" (0xffffffff), "g" (count)
+	: "memory");
+return dest;
+}
+
 static inline void * memcpy1(void * to, const void * from, size_t n)
 {
 int d0, d1, d2;
 __asm__ __volatile__(
 	"rep ; movsl\n\t"
+	"testb $2,%b4\n\t"
+	"je 1f\n\t"
+	"movsw\n"
+	"1:\ttestb $1,%b4\n\t"
+	"je 2f\n\t"
+	"movsb\n"
+	"2:"
+	: "=&c" (d0), "=&D" (d1), "=&S" (d2)
+	:"0" (n/4), "q" (n),"1" ((long) to),"2" ((long) from)
+	: "memory");
+return (to);
+}
+
+static inline void * memcpy2(void * to, const void * from, size_t n)
+{
+int d0, d1, d2;
+__asm__ __volatile__(
+	"rep movsl\n\t"  /* one-line rep prefix + string op */
 	"testb $2,%b4\n\t"
 	"je 1f\n\t"
 	"movsw\n"
@@ -2131,6 +2527,10 @@ void asm_test(void)
     strncat1(buf, " worldXXXXX", 3);
     printf("%s\n", buf);
 
+    memcpy2(buf, "hello", 6);
+    strncat2(buf, " worldXXXXX", 3);
+    printf("%s\n", buf);
+
     /* 'A' constraint test */
     printf("mul64=0x%Lx\n", mul64(0x12345678, 0xabcd1234));
     printf("inc64=0x%Lx\n", inc64(0x12345678ffffffff));
@@ -2191,6 +2591,63 @@ void builtin_test(void)
     printf("res = %d\n", __builtin_constant_p(constant_p_var));
 }
 
+#ifndef _WIN32
+extern int __attribute__((weak)) weak_f1(void);
+extern int __attribute__((weak)) weak_f2(void);
+extern int                       weak_f3(void);
+extern int __attribute__((weak)) weak_v1;
+extern int __attribute__((weak)) weak_v2;
+extern int                       weak_v3;
+
+extern int                           (*weak_fpa)() __attribute__((weak));
+extern int __attribute__((weak))     (*weak_fpb)();
+extern     __attribute__((weak)) int (*weak_fpc)();
+
+extern int                     weak_asm_f1(void) asm("weak_asm_f1x") __attribute((weak));
+extern int __attribute((weak)) weak_asm_f2(void) asm("weak_asm_f2x")                    ;
+extern int __attribute((weak)) weak_asm_f3(void) asm("weak_asm_f3x") __attribute((weak));
+extern int                     weak_asm_v1       asm("weak_asm_v1x") __attribute((weak));
+extern int __attribute((weak)) weak_asm_v2       asm("weak_asm_v2x")                    ;
+extern int __attribute((weak)) weak_asm_v3(void) asm("weak_asm_v3x") __attribute((weak));
+
+static const size_t dummy = 0;
+extern __typeof(dummy) weak_dummy1 __attribute__((weak, alias("dummy")));
+extern __typeof(dummy) __attribute__((weak, alias("dummy"))) weak_dummy2;
+extern __attribute__((weak, alias("dummy"))) __typeof(dummy) weak_dummy3;
+
+int some_lib_func(void);
+int dummy_impl_of_slf(void) { return 444; }
+int some_lib_func(void) __attribute__((weak, alias("dummy_impl_of_slf")));
+
+int weak_toolate() __attribute__((weak));
+int weak_toolate() { return 0; }
+
+void __attribute__((weak)) weak_test(void)
+{
+	printf("weak_f1=%d\n", weak_f1 ? weak_f1() : 123);
+	printf("weak_f2=%d\n", weak_f2 ? weak_f2() : 123);
+	printf("weak_f3=%d\n", weak_f3 ? weak_f3() : 123);
+	printf("weak_v1=%d\n",&weak_v1 ? weak_v1   : 123);
+	printf("weak_v2=%d\n",&weak_v2 ? weak_v2   : 123);
+	printf("weak_v3=%d\n",&weak_v3 ? weak_v3   : 123);
+
+	printf("weak_fpa=%d\n",&weak_fpa ? weak_fpa() : 123);
+	printf("weak_fpb=%d\n",&weak_fpb ? weak_fpb() : 123);
+	printf("weak_fpc=%d\n",&weak_fpc ? weak_fpc() : 123);
+	
+	printf("weak_asm_f1=%d\n", weak_asm_f1 != NULL);
+	printf("weak_asm_f2=%d\n", weak_asm_f2 != NULL);
+	printf("weak_asm_f3=%d\n", weak_asm_f3 != NULL);
+	printf("weak_asm_v1=%d\n",&weak_asm_v1 != NULL);
+	printf("weak_asm_v2=%d\n",&weak_asm_v2 != NULL);
+	printf("weak_asm_v3=%d\n",&weak_asm_v3 != NULL);
+}
+
+int __attribute__((weak)) weak_f2() { return 222; }
+int __attribute__((weak)) weak_f3() { return 333; }
+int __attribute__((weak)) weak_v2 = 222;
+int __attribute__((weak)) weak_v3 = 333;
+#endif
 
 void const_func(const int a)
 {
@@ -2199,4 +2656,184 @@ void const_func(const int a)
 void const_warn_test(void)
 {
     const_func(1);
+}
+
+struct condstruct {
+  int i;
+};
+
+int getme (struct condstruct *s, int i)
+{
+  int i1 = (i == 0 ? 0 : s)->i;
+  int i2 = (i == 0 ? s : 0)->i;
+  int i3 = (i == 0 ? (void*)0 : s)->i;
+  int i4 = (i == 0 ? s : (void*)0)->i;
+  return i1 + i2 + i3 + i4;
+}
+
+struct global_data
+{
+  int a[40];
+  int *b[40];
+};
+
+struct global_data global_data;
+
+int global_data_getstuff (int *, int);
+
+void global_data_callit (int i)
+{
+  *global_data.b[i] = global_data_getstuff (global_data.b[i], 1);
+}
+
+int global_data_getstuff (int *p, int i)
+{
+  return *p + i;
+}
+
+void global_data_test (void)
+{
+  global_data.a[0] = 42;
+  global_data.b[0] = &global_data.a[0];
+  global_data_callit (0);
+  printf ("%d\n", global_data.a[0]);
+}
+
+struct cmpcmpS
+{
+  unsigned char fill : 3;
+  unsigned char b1 : 1;
+  unsigned char b2 : 1;
+  unsigned char fill2 : 3;
+};
+
+int glob1, glob2, glob3;
+
+void compare_comparisons (struct cmpcmpS *s)
+{
+  if (s->b1 != (glob1 == glob2)
+      || (s->b2 != (glob1 == glob3)))
+    printf ("comparing comparisons broken\n");
+}
+
+void cmp_comparison_test(void)
+{
+  struct cmpcmpS s;
+  s.b1 = 1;
+  glob1 = 42; glob2 = 42;
+  s.b2 = 0;
+  glob3 = 43;
+  compare_comparisons (&s);
+}
+
+int fcompare (double a, double b, int code)
+{
+  switch (code) {
+    case 0: return a == b;
+    case 1: return a != b;
+    case 2: return a < b;
+    case 3: return a >= b;
+    case 4: return a > b;
+    case 5: return a <= b;
+  }
+}
+
+void math_cmp_test(void)
+{
+  double nan = 0.0/0.0;
+  double one = 1.0;
+  double two = 2.0;
+  int comp = 0;
+#define bug(a,b,op,iop,part) printf("Test broken: %s %s %s %s %d\n", #a, #b, #op, #iop, part)
+
+  /* This asserts that "a op b" is _not_ true, but "a iop b" is true.
+     And it does this in various ways so that all code generation paths
+     are checked (generating inverted tests, or non-inverted tests, or
+     producing a 0/1 value without jumps (that's done in the fcompare
+     function).  */
+#define FCMP(a,b,op,iop,code) \
+  if (fcompare (a,b,code))    \
+    bug (a,b,op,iop,1); \
+  if (a op b) \
+    bug (a,b,op,iop,2); \
+  if (a iop b) \
+    ; \
+  else \
+    bug (a,b,op,iop,3); \
+  if ((a op b) || comp) \
+    bug (a,b,op,iop,4); \
+  if ((a iop b) || comp) \
+    ; \
+  else \
+    bug (a,b,op,iop,5);
+
+  /* Equality tests.  */
+  FCMP(nan, nan, ==, !=, 0);
+  FCMP(one, two, ==, !=, 0);
+  FCMP(one, one, !=, ==, 1);
+  /* Non-equality is a bit special.  */
+  if (!fcompare (nan, nan, 1))
+    bug (nan, nan, !=, ==, 6);
+
+  /* Relational tests on numbers.  */
+  FCMP(two, one, <, >=, 2);
+  FCMP(one, two, >=, <, 3);
+  FCMP(one, two, >, <=, 4);
+  FCMP(two, one, <=, >, 5);
+
+  /* Relational tests on NaNs.  Note that the inverse op here is
+     always !=, there's no operator in C that is equivalent to !(a < b),
+     when NaNs are involved, same for the other relational ops.  */
+  FCMP(nan, nan, <, !=, 2);
+  FCMP(nan, nan, >=, !=, 3);
+  FCMP(nan, nan, >, !=, 4);
+  FCMP(nan, nan, <=, !=, 5);
+}
+
+double get100 () { return 100.0; }
+
+void callsave_test(void)
+{
+#if defined __i386__ || defined __x86_64__ || defined __arm__
+  int i, s; double *d; double t;
+  s = sizeof (double);
+  printf ("callsavetest: %d\n", s);
+  d = alloca (sizeof(double));
+  d[0] = 10.0;
+  /* x86-64 had a bug were the next call to get100 would evict
+     the lvalue &d[0] as VT_LLOCAL, and the reload would be done
+     in int type, not pointer type.  When alloca returns a pointer
+     with the high 32 bit set (which is likely on x86-64) the access
+     generates a segfault.  */
+  i = d[0] > get100 ();
+  printf ("%d\n", i);
+#endif
+}
+
+
+void bfa3(ptrdiff_t str_offset)
+{
+    printf("bfa3: %s\n", (char *)__builtin_frame_address(3) + str_offset);
+}
+void bfa2(ptrdiff_t str_offset)
+{
+    printf("bfa2: %s\n", (char *)__builtin_frame_address(2) + str_offset);
+    bfa3(str_offset);
+}
+void bfa1(ptrdiff_t str_offset)
+{
+    printf("bfa1: %s\n", (char *)__builtin_frame_address(1) + str_offset);
+    bfa2(str_offset);
+}
+
+void builtin_frame_address_test(void)
+{
+/* builtin_frame_address fails on ARM with gcc which make test3 fail */
+#ifndef __arm__
+    char str[] = "__builtin_frame_address";
+    char *fp0 = __builtin_frame_address(0);
+
+    printf("str: %s\n", str);
+    bfa1(str-fp0);
+#endif
 }

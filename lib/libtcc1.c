@@ -28,6 +28,8 @@ the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  
 */
 
+#include <stdint.h>
+
 #define W_TYPE_SIZE   32
 #define BITS_PER_UNIT 8
 
@@ -107,10 +109,10 @@ union float_long {
 };
 
 /* XXX: we don't support several builtin supports for now */
-#ifndef __x86_64__
+#if !defined(TCC_TARGET_X86_64) && !defined(TCC_TARGET_ARM)
 
 /* XXX: use gcc/tcc intrinsic ? */
-#if defined(__i386__)
+#if defined(TCC_TARGET_I386)
 #define sub_ddmmss(sh, sl, ah, al, bh, bl) \
   __asm__ ("subl %5,%1\n\tsbbl %3,%0"					\
 	   : "=r" ((USItype) (sh)),					\
@@ -162,7 +164,7 @@ static UDWtype __udivmoddi4 (UDWtype n, UDWtype d, UDWtype *rp)
   n0 = nn.s.low;
   n1 = nn.s.high;
 
-#if !UDIV_NEEDS_NORMALIZATION
+#if !defined(UDIV_NEEDS_NORMALIZATION)
   if (d1 == 0)
     {
       if (d0 > n1)
@@ -478,13 +480,6 @@ long long __ashldi3(long long a, int b)
 #endif
 }
 
-#if defined(__i386__)
-/* FPU control word for rounding to nearest mode */
-unsigned short __tcc_fpu_control = 0x137f;
-/* FPU control word for round to zero mode for int conversion */
-unsigned short __tcc_int_fpu_control = 0x137f | 0x0c00;
-#endif
-
 #endif /* !__x86_64__ */
 
 /* XXX: fix tcc's code generator to do this instead */
@@ -605,3 +600,140 @@ unsigned long long __fixunsxfdi (long double a1)
         return 0;
 }
 
+long long __fixsfdi (float a1)
+{
+    long long ret; int s;
+    ret = __fixunssfdi((s = a1 >= 0) ? a1 : -a1);
+    return s ? ret : -ret;
+}
+
+long long __fixdfdi (double a1)
+{
+    long long ret; int s;
+    ret = __fixunsdfdi((s = a1 >= 0) ? a1 : -a1);
+    return s ? ret : -ret;
+}
+
+long long __fixxfdi (long double a1)
+{
+    long long ret; int s;
+    ret = __fixunsxfdi((s = a1 >= 0) ? a1 : -a1);
+    return s ? ret : -ret;
+}
+
+#if defined(TCC_TARGET_X86_64) && !defined(_WIN64)
+
+#ifndef __TINYC__
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+#else
+/* Avoid including stdlib.h because it is not easily available when
+   cross compiling */
+extern void *malloc(unsigned long long);
+void *memset(void *s, int c, size_t n);
+extern void free(void*);
+extern void abort(void);
+#endif
+
+enum __va_arg_type {
+    __va_gen_reg, __va_float_reg, __va_stack
+};
+
+//This should be in sync with the declaration on our include/stdarg.h
+/* GCC compatible definition of va_list. */
+typedef struct {
+    unsigned int gp_offset;
+    unsigned int fp_offset;
+    union {
+        unsigned int overflow_offset;
+        char *overflow_arg_area;
+    };
+    char *reg_save_area;
+} __va_list_struct;
+
+#undef __va_start
+#undef __va_arg
+#undef __va_copy
+#undef __va_end
+
+void __va_start(__va_list_struct *ap, void *fp)
+{
+    memset(ap, 0, sizeof(__va_list_struct));
+    *ap = *(__va_list_struct *)((char *)fp - 16);
+    ap->overflow_arg_area = (char *)fp + ap->overflow_offset;
+    ap->reg_save_area = (char *)fp - 176 - 16;
+}
+
+void *__va_arg(__va_list_struct *ap,
+               enum __va_arg_type arg_type,
+               int size, int align)
+{
+    size = (size + 7) & ~7;
+    align = (align + 7) & ~7;
+    switch (arg_type) {
+    case __va_gen_reg:
+        if (ap->gp_offset < 48) {
+            ap->gp_offset += 8;
+            return ap->reg_save_area + ap->gp_offset - 8;
+        }
+        size = 8;
+        goto use_overflow_area;
+
+    case __va_float_reg:
+        if (ap->fp_offset < 128 + 48) {
+            ap->fp_offset += 16;
+            return ap->reg_save_area + ap->fp_offset - 16;
+        }
+        size = 8;
+        goto use_overflow_area;
+
+    case __va_stack:
+    use_overflow_area:
+        ap->overflow_arg_area += size;
+        ap->overflow_arg_area = (char*)((intptr_t)(ap->overflow_arg_area + align - 1) & -(intptr_t)align);
+        return ap->overflow_arg_area - size;
+
+    default:
+#ifndef __TINYC__
+        fprintf(stderr, "unknown ABI type for __va_arg\n");
+#endif
+        abort();
+    }
+}
+
+#endif /* __x86_64__ */
+
+/* Flushing for tccrun */
+#if defined(TCC_TARGET_X86_64) || defined(TCC_TARGET_I386)
+
+void __clear_cache(char *beginning, char *end)
+{
+}
+
+#elif defined(TCC_TARGET_ARM)
+
+#define _GNU_SOURCE
+#include <unistd.h>
+#include <sys/syscall.h>
+#include <stdio.h>
+
+void __clear_cache(char *beginning, char *end)
+{
+/* __ARM_NR_cacheflush is kernel private and should not be used in user space.
+ * However, there is no ARM asm parser in tcc so we use it for now */
+#if 1
+    syscall(__ARM_NR_cacheflush, beginning, end, 0);
+#else
+    __asm__ ("push {r7}\n\t"
+             "mov r7, #0xf0002\n\t"
+             "mov r2, #0\n\t"
+             "swi 0\n\t"
+             "pop {r7}\n\t"
+             "ret");
+#endif
+}
+
+#else
+#warning __clear_cache not defined for this architecture, avoid using tcc -run
+#endif

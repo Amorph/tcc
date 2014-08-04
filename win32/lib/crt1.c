@@ -11,25 +11,31 @@ void _controlfp(unsigned a, unsigned b);
 
 typedef struct
 {
-	int newmode;
+    int newmode;
 } _startupinfo;
 
-void __getmainargs(int *pargc, char ***pargv, char ***penv, int globb, _startupinfo*);
-
+int __getmainargs(int *pargc, char ***pargv, char ***penv, int globb, _startupinfo*);
 int main(int argc, char **argv, char **env);
 
 int _start(void)
 {
-	int argc; char **argv; char **env; int ret;
-	_startupinfo start_info = {0};
+    __TRY__
+    int argc; char **argv; char **env;
+    _startupinfo start_info = {0};
 
-	_controlfp(0x10000, 0x30000);
-	__set_app_type(__CONSOLE_APP);
-	__getmainargs(&argc, &argv, &env, 0, &start_info);
+    _controlfp(0x10000, 0x30000);
+    __set_app_type(__CONSOLE_APP);
 
-	ret = main(argc, argv, env);
-	exit(ret);
+    if (! __getmainargs(&argc, &argv, &env, 0, &start_info))
+    {
+        int ret;
+
+        ret = main(argc, argv, env);
+        exit(ret);
+    }
+    // __getmainargs failed because possible few memory on the heap.
+    // end with exit code of 3, similar to abort()
+    ExitProcess(3);
 }
 
 // =============================================
-

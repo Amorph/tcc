@@ -1,3 +1,4 @@
+# gas comment with ``gnu'' style quotes
 
 /* some directive tests */
 
@@ -9,7 +10,8 @@
    .int 1, 2, 3
    .align 8
    .byte 1
-   .align 16, 0x90
+/* .align 16, 0x90 gas is too clever for us with 0x90 fill */
+   .align 16, 0x91 /* 0x91 tests the non-clever behaviour */
    .skip 3
    .skip 15, 0x90
    .string "hello\0world"
@@ -121,6 +123,7 @@ addl $0x123, 0x100
 addl $0x123, 0x100(%ebx)
 addl $0x123, 0x100(%ebx,%edx,2)
 addl $0x123, 0x100(%esp)
+addl $0x123, (3*8)(%esp)
 addl $0x123, (%ebp)
 addl $0x123, (%esp)
 cmpl $0x123, (%esp)
@@ -196,6 +199,11 @@ call *%eax
 call *0x1000
 call func1
 
+.global L5,L6
+
+L5:
+L6:
+
 lcall $0x100, $0x1000
 
 jmp 0x1000
@@ -205,8 +213,10 @@ jmp *0x1000
 ljmp $0x100, $0x1000
 
 ret
+retl
 
 ret $10
+retl $10
 
 lret
 
@@ -240,7 +250,11 @@ L3:
 
  fadd
  fadd %st(1), %st
+ fadd %st(0), %st(1)
  fadd %st(3)
+
+ fmul %st(0),%st(0)
+ fmul %st(0),%st(1)
 
  faddp %st(5)
  faddp
@@ -341,9 +355,9 @@ L3:
  fnstcw 0x1002
  fstcw 0x1002
  fnstsw 0x1004
- fnstsw %eax
+ fnstsw (%eax)
  fstsw 0x1004
- fstsw %eax
+ fstsw (%eax)
  fnclex
  fclex
  fnstenv 0x1000
@@ -470,6 +484,24 @@ int $0x10
     repz
     repne
     repnz
+    nop
+
+    lock ;negl (%eax)
+    wait ;pushf
+    rep  ;stosb
+    repe ;lodsb
+    repz ;cmpsb
+    repne;movsb
+    repnz;outsb
+
+    /* handle one-line prefix + ops */
+    lock  negl (%eax)
+    wait  pushf
+    rep   stosb
+    repe  lodsb
+    repz  cmpsb
+    repne movsb
+    repnz outsb
     
     invd
     wbinvd
@@ -556,3 +588,22 @@ int $0x10
     pushl $1
     pushw $1
     push $1
+
+#ifdef __ASSEMBLER__ // should be defined, for S files
+    inc %eax
+#endif
+
+ft1: ft2: ft3: ft4: ft5: ft6: ft7: ft8: ft9:
+    xor %eax, %eax
+    ret
+
+.type ft1,STT_FUNC
+.type ft2,@STT_FUNC
+.type ft3,%STT_FUNC
+.type ft4,"STT_FUNC"
+.type ft5,function
+.type ft6,@function
+.type ft7,%function
+.type ft8,"function"
+
+    pause
