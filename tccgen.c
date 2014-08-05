@@ -200,18 +200,18 @@ ST_FUNC Sym *sym_find2(TCCState *tcc_state, Sym *s, int v)
 ST_INLN Sym *struct_find(TCCState *tcc_state, int v)
 {
 	v -= TOK_IDENT;
-	if ((unsigned)v >= (unsigned)(tok_ident - TOK_IDENT))
+	if ((unsigned)v >= (unsigned)(tcc_state->tok_ident - TOK_IDENT))
 		return NULL;
-	return table_ident[v]->sym_struct;
+	return tcc_state->table_ident[v]->sym_struct;
 }
 
 /* find an identifier */
 ST_INLN Sym *sym_find(TCCState *tcc_state, int v)
 {
 	v -= TOK_IDENT;
-	if ((unsigned)v >= (unsigned)(tok_ident - TOK_IDENT))
+	if ((unsigned)v >= (unsigned)(tcc_state->tok_ident - TOK_IDENT))
 		return NULL;
-	return table_ident[v]->sym_identifier;
+	return tcc_state->table_ident[v]->sym_identifier;
 }
 
 /* push a given symbol on the symbol stack */
@@ -231,7 +231,7 @@ ST_FUNC Sym *sym_push(TCCState *tcc_state, int v, CType *type, int r, int c)
 	/* XXX: simplify */
 	if (!(v & SYM_FIELD) && (v & ~SYM_STRUCT) < SYM_FIRST_ANOM) {
 		/* record symbol in token array */
-		ts = table_ident[(v & ~SYM_STRUCT) - TOK_IDENT];
+		ts = tcc_state->table_ident[(v & ~SYM_STRUCT) - TOK_IDENT];
 		if (v & SYM_STRUCT)
 			ps = &ts->sym_struct;
 		else
@@ -249,7 +249,7 @@ ST_FUNC Sym *global_identifier_push(TCCState *tcc_state, int v, int t, int c)
 	s = sym_push2(tcc_state, &global_stack, v, t, c);
 	/* don't record anonymous symbol */
 	if (v < SYM_FIRST_ANOM) {
-		ps = &table_ident[v - TOK_IDENT]->sym_identifier;
+		ps = &tcc_state->table_ident[v - TOK_IDENT]->sym_identifier;
 		/* modify the top most local identifier, so that
 		sym_identifier will point to 's' when popped */
 		while (*ps != NULL)
@@ -274,7 +274,7 @@ ST_FUNC void sym_pop(TCCState *tcc_state, Sym **ptop, Sym *b)
 		/* remove symbol in token array */
 		/* XXX: simplify */
 		if (!(v & SYM_FIELD) && (v & ~SYM_STRUCT) < SYM_FIRST_ANOM) {
-			ts = table_ident[(v & ~SYM_STRUCT) - TOK_IDENT];
+			ts = tcc_state->table_ident[(v & ~SYM_STRUCT) - TOK_IDENT];
 			if (v & SYM_STRUCT)
 				ps = &ts->sym_struct;
 			else
@@ -2747,47 +2747,47 @@ static void parse_attribute(TCCState* tcc_state, AttributeDef *ad)
 {
 	int t, n;
 
-	while (tok == TOK_ATTRIBUTE1 || tok == TOK_ATTRIBUTE2) {
+	while (tcc_state->tok == TOK_ATTRIBUTE1 || tcc_state->tok == TOK_ATTRIBUTE2) {
 		next(tcc_state);
 		skip(tcc_state, '(');
 		skip(tcc_state, '(');
-		while (tok != ')') {
-			if (tok < TOK_IDENT)
+		while (tcc_state->tok != ')') {
+			if (tcc_state->tok < TOK_IDENT)
 				expect(tcc_state, "attribute name");
-			t = tok;
+			t = tcc_state->tok;
 			next(tcc_state);
 			switch (t) {
 			case TOK_SECTION1:
 			case TOK_SECTION2:
 				skip(tcc_state, '(');
-				if (tok != TOK_STR)
+				if (tcc_state->tok != TOK_STR)
 					expect(tcc_state, "section name");
-				ad->section = find_section(tcc_state, (char *)tokc.cstr->data);
+				ad->section = find_section(tcc_state, (char *)tcc_state->tokc.cstr->data);
 				next(tcc_state);
 				skip(tcc_state, ')');
 				break;
 			case TOK_ALIAS1:
 			case TOK_ALIAS2:
 				skip(tcc_state, '(');
-				if (tok != TOK_STR)
+				if (tcc_state->tok != TOK_STR)
 					expect(tcc_state, "alias(\"target\")");
 				ad->alias_target = /* save string as token, for later */
-					tok_alloc(tcc_state, (char*)tokc.cstr->data, tokc.cstr->size - 1)->tok;
+					tok_alloc(tcc_state, (char*)tcc_state->tokc.cstr->data, tcc_state->tokc.cstr->size - 1)->tok;
 				next(tcc_state);
 				skip(tcc_state, ')');
 				break;
 			case TOK_VISIBILITY1:
 			case TOK_VISIBILITY2:
 				skip(tcc_state, '(');
-				if (tok != TOK_STR)
+				if (tcc_state->tok != TOK_STR)
 					expect(tcc_state, "visibility(\"default|hidden|internal|protected\")");
-				if (!strcmp(tokc.cstr->data, "default"))
+				if (!strcmp(tcc_state->tokc.cstr->data, "default"))
 					ad->a.visibility = STV_DEFAULT;
-				else if (!strcmp(tokc.cstr->data, "hidden"))
+				else if (!strcmp(tcc_state->tokc.cstr->data, "hidden"))
 					ad->a.visibility = STV_HIDDEN;
-				else if (!strcmp(tokc.cstr->data, "internal"))
+				else if (!strcmp(tcc_state->tokc.cstr->data, "internal"))
 					ad->a.visibility = STV_INTERNAL;
-				else if (!strcmp(tokc.cstr->data, "protected"))
+				else if (!strcmp(tcc_state->tokc.cstr->data, "protected"))
 					ad->a.visibility = STV_PROTECTED;
 				else
 					expect(tcc_state, "visibility(\"default|hidden|internal|protected\")");
@@ -2796,7 +2796,7 @@ static void parse_attribute(TCCState* tcc_state, AttributeDef *ad)
 				break;
 			case TOK_ALIGNED1:
 			case TOK_ALIGNED2:
-				if (tok == '(') {
+				if (tcc_state->tok == '(') {
 					next(tcc_state);
 					n = expr_const(tcc_state);
 					if (n <= 0 || (n & (n - 1)) != 0)
@@ -2857,7 +2857,7 @@ static void parse_attribute(TCCState* tcc_state, AttributeDef *ad)
 #endif
 			case TOK_MODE:
 				skip(tcc_state, '(');
-				switch (tok) {
+				switch (tcc_state->tok) {
 				case TOK_MODE_DI:
 					ad->a.mode = VT_LLONG + 1;
 					break;
@@ -2868,7 +2868,7 @@ static void parse_attribute(TCCState* tcc_state, AttributeDef *ad)
 					ad->a.mode = VT_INT + 1;
 					break;
 				default:
-					tcc_warning(tcc_state, "__mode__(%s) not supported\n", get_tok_str(tcc_state, tok, NULL));
+					tcc_warning(tcc_state, "__mode__(%s) not supported\n", get_tok_str(tcc_state, tcc_state->tok, NULL));
 					break;
 				}
 				next(tcc_state);
@@ -2884,19 +2884,19 @@ static void parse_attribute(TCCState* tcc_state, AttributeDef *ad)
 				if (tcc_state->warn_unsupported)
 					tcc_warning(tcc_state, "'%s' attribute ignored", get_tok_str(tcc_state, t, NULL));
 				/* skip parameters */
-				if (tok == '(') {
+				if (tcc_state->tok == '(') {
 					int parenthesis = 0;
 					do {
-						if (tok == '(')
+						if (tcc_state->tok == '(')
 							parenthesis++;
-						else if (tok == ')')
+						else if (tcc_state->tok == ')')
 							parenthesis--;
 						next(tcc_state);
-					} while (parenthesis && tok != -1);
+					} while (parenthesis && tcc_state->tok != -1);
 				}
 				break;
 			}
-			if (tok != ',')
+			if (tcc_state->tok != ',')
 				break;
 			next(tcc_state);
 		}
@@ -2914,10 +2914,10 @@ static void struct_decl(TCCState* tcc_state, CType *type, int u, int tdef)
 	AttributeDef ad;
 	CType type1, btype;
 
-	a = tok; /* save decl type */
+	a = tcc_state->tok; /* save decl type */
 	next(tcc_state);
-	if (tok != '{') {
-		v = tok;
+	if (tcc_state->tok != '{') {
+		v = tcc_state->tok;
 		next(tcc_state);
 		/* struct already defined ? return it */
 		if (v < TOK_IDENT)
@@ -2928,7 +2928,7 @@ static void struct_decl(TCCState* tcc_state, CType *type, int u, int tdef)
 				tcc_error(tcc_state, "invalid type");
 			goto do_decl;
 		}
-		else if (tok >= TOK_IDENT && !tdef)
+		else if (tcc_state->tok >= TOK_IDENT && !tdef)
 			tcc_error(tcc_state, "unknown struct/union/enum");
 	}
 	else {
@@ -2944,7 +2944,7 @@ do_decl:
 	type->t = u;
 	type->ref = s;
 
-	if (tok == '{') {
+	if (tcc_state->tok == '{') {
 		next(tcc_state);
 		if (s->c != -1)
 			tcc_error(tcc_state, "struct/union/enum already defined");
@@ -2953,7 +2953,7 @@ do_decl:
 		/* non empty enums are not allowed */
 		if (a == TOK_ENUM) {
 			for (;;) {
-				v = tok;
+				v = tcc_state->tok;
 				if (v < TOK_UIDENT)
 					expect(tcc_state, "identifier");
 				ss = sym_find(tcc_state, v);
@@ -2961,19 +2961,19 @@ do_decl:
 					tcc_error(tcc_state, "redefinition of enumerator '%s'",
 					get_tok_str(tcc_state, v, NULL));
 				next(tcc_state);
-				if (tok == '=') {
+				if (tcc_state->tok == '=') {
 					next(tcc_state);
 					c = expr_const(tcc_state);
 				}
 				/* enum symbols have static storage */
 				ss = sym_push(tcc_state, v, &int_type, VT_CONST, c);
 				ss->type.t |= VT_STATIC;
-				if (tok != ',')
+				if (tcc_state->tok != ',')
 					break;
 				next(tcc_state);
 				c++;
 				/* NOTE: we accept a trailing comma */
-				if (tok == '}')
+				if (tcc_state->tok == '}')
 					break;
 			}
 			s->c = type_size(&int_type, &align);
@@ -2986,7 +2986,7 @@ do_decl:
 			bit_pos = 0;
 			offset = 0;
 			flexible = 0;
-			while (tok != '}') {
+			while (tcc_state->tok != '}') {
 				parse_btype(tcc_state, &btype, &ad);
 				while (1) {
 					if (flexible)
@@ -2995,7 +2995,7 @@ do_decl:
 					bit_size = -1;
 					v = 0;
 					type1 = btype;
-					if (tok != ':') {
+					if (tcc_state->tok != ':') {
 						type_decl(tcc_state, &type1, &ad, &v, TYPE_DIRECT | TYPE_ABSTRACT);
 						if (v == 0 && (type1.t & VT_BTYPE) != VT_STRUCT)
 							expect(tcc_state, "identifier");
@@ -3011,7 +3011,7 @@ do_decl:
 							tcc_error(tcc_state, "invalid type for '%s'",
 							get_tok_str(tcc_state, v, NULL));
 					}
-					if (tok == ':') {
+					if (tcc_state->tok == ':') {
 						next(tcc_state);
 						bit_size = expr_const(tcc_state);
 						/* XXX: handle v = 0 case for messages */
@@ -3120,7 +3120,7 @@ do_decl:
 						*ps = ss;
 						ps = &ss->next;
 					}
-					if (tok == ';' || tok == TOK_EOF)
+					if (tcc_state->tok == ';' || tcc_state->tok == TOK_EOF)
 						break;
 					skip(tcc_state, ',');
 				}
@@ -3155,7 +3155,7 @@ static int parse_btype(TCCState* tcc_state, CType *type, AttributeDef *ad)
 	typespec_found = 0;
 	t = 0;
 	while (1) {
-		switch (tok) {
+		switch (tcc_state->tok) {
 		case TOK_EXTENSION:
 			/* currently, we really ignore extension */
 			next(tcc_state);
@@ -3308,7 +3308,7 @@ static int parse_btype(TCCState* tcc_state, CType *type, AttributeDef *ad)
 		default:
 			if (typespec_found)
 				goto the_end;
-			s = sym_find(tcc_state, tok);
+			s = sym_find(tcc_state, tcc_state->tok);
 			if (!s || !(s->type.t & VT_TYPEDEF))
 				goto the_end;
 			t |= (s->type.t & ~VT_TYPEDEF);
@@ -3362,12 +3362,12 @@ ST_FUNC void parse_asm_str(TCCState* tcc_state, CString *astr)
 {
 	skip(tcc_state, '(');
 	/* read the string */
-	if (tok != TOK_STR)
+	if (tcc_state->tok != TOK_STR)
 		expect(tcc_state, "string constant");
 	cstr_new(astr);
-	while (tok == TOK_STR) {
+	while (tcc_state->tok == TOK_STR) {
 		/* XXX: add \0 handling too ? */
-		cstr_cat(tcc_state, astr, tokc.cstr->data);
+		cstr_cat(tcc_state, astr, tcc_state->tokc.cstr->data);
 		next(tcc_state);
 	}
 	cstr_ccat(tcc_state, astr, '\0');
@@ -3392,14 +3392,14 @@ static void post_type(TCCState* tcc_state, CType *type, AttributeDef *ad)
 	AttributeDef ad1;
 	CType pt;
 
-	if (tok == '(') {
+	if (tcc_state->tok == '(') {
 		/* function declaration */
 		next(tcc_state);
 		l = 0;
 		first = NULL;
 		plast = &first;
 		arg_size = 0;
-		if (tok != ')') {
+		if (tcc_state->tok != ')') {
 			for (;;) {
 				/* read param name and compute offset */
 				if (l != FUNC_OLD) {
@@ -3413,7 +3413,7 @@ static void post_type(TCCState* tcc_state, CType *type, AttributeDef *ad)
 						}
 					}
 					l = FUNC_NEW;
-					if ((pt.t & VT_BTYPE) == VT_VOID && tok == ')')
+					if ((pt.t & VT_BTYPE) == VT_VOID && tcc_state->tok == ')')
 						break;
 					type_decl(tcc_state, &pt, &ad1, &n, TYPE_DIRECT | TYPE_ABSTRACT);
 					if ((pt.t & VT_BTYPE) == VT_VOID)
@@ -3422,7 +3422,7 @@ static void post_type(TCCState* tcc_state, CType *type, AttributeDef *ad)
 				}
 				else {
 				old_proto:
-					n = tok;
+					n = tcc_state->tok;
 					if (n < TOK_UIDENT)
 						expect(tcc_state, "identifier");
 					pt.t = VT_INT;
@@ -3432,10 +3432,10 @@ static void post_type(TCCState* tcc_state, CType *type, AttributeDef *ad)
 				s = sym_push(tcc_state, n | SYM_FIELD, &pt, 0, 0);
 				*plast = s;
 				plast = &s->next;
-				if (tok == ')')
+				if (tcc_state->tok == ')')
 					break;
 				skip(tcc_state, ',');
-				if (l == FUNC_NEW && tok == TOK_DOTS) {
+				if (l == FUNC_NEW && tcc_state->tok == TOK_DOTS) {
 					l = FUNC_ELLIPSIS;
 					next(tcc_state);
 					break;
@@ -3452,7 +3452,7 @@ static void post_type(TCCState* tcc_state, CType *type, AttributeDef *ad)
 		/* some ancient pre-K&R C allows a function to return an array
 		and the array brackets to be put after the arguments, such
 		that "int c()[]" means something like "int[] c()" */
-		if (tok == '[') {
+		if (tcc_state->tok == '[') {
 			next(tcc_state);
 			skip(tcc_state, ']'); /* only handle simple "[]" */
 			type->t |= VT_PTR;
@@ -3465,14 +3465,14 @@ static void post_type(TCCState* tcc_state, CType *type, AttributeDef *ad)
 		type->t = VT_FUNC;
 		type->ref = s;
 	}
-	else if (tok == '[') {
+	else if (tcc_state->tok == '[') {
 		/* array definition */
 		next(tcc_state);
-		if (tok == TOK_RESTRICT1)
+		if (tcc_state->tok == TOK_RESTRICT1)
 			next(tcc_state);
 		n = -1;
 		t1 = 0;
-		if (tok != ']') {
+		if (tcc_state->tok != ']') {
 			if (!local_stack || nocode_wanted)
 				vpushi(tcc_state, expr_const(tcc_state));
 			else gexpr(tcc_state);
@@ -3528,11 +3528,11 @@ static void type_decl(TCCState* tcc_state, CType *type, AttributeDef *ad, int *v
 	CType type1, *type2;
 	int qualifiers, storage;
 
-	while (tok == '*') {
+	while (tcc_state->tok == '*') {
 		qualifiers = 0;
 	redo:
 		next(tcc_state);
-		switch (tok) {
+		switch (tcc_state->tok) {
 		case TOK_CONST1:
 		case TOK_CONST2:
 		case TOK_CONST3:
@@ -3553,25 +3553,25 @@ static void type_decl(TCCState* tcc_state, CType *type, AttributeDef *ad, int *v
 	}
 
 	/* XXX: clarify attribute handling */
-	if (tok == TOK_ATTRIBUTE1 || tok == TOK_ATTRIBUTE2)
+	if (tcc_state->tok == TOK_ATTRIBUTE1 || tcc_state->tok == TOK_ATTRIBUTE2)
 		parse_attribute(tcc_state, ad);
 
 	/* recursive type */
 	/* XXX: incorrect if abstract type for functions (e.g. 'int ()') */
 	type1.t = 0; /* XXX: same as int */
-	if (tok == '(') {
+	if (tcc_state->tok == '(') {
 		next(tcc_state);
 		/* XXX: this is not correct to modify 'ad' at this point, but
 		the syntax is not clear */
-		if (tok == TOK_ATTRIBUTE1 || tok == TOK_ATTRIBUTE2)
+		if (tcc_state->tok == TOK_ATTRIBUTE1 || tcc_state->tok == TOK_ATTRIBUTE2)
 			parse_attribute(tcc_state, ad);
 		type_decl(tcc_state, &type1, ad, v, td);
 		skip(tcc_state, ')');
 	}
 	else {
 		/* type identifier */
-		if (tok >= TOK_IDENT && (td & TYPE_DIRECT)) {
-			*v = tok;
+		if (tcc_state->tok >= TOK_IDENT && (td & TYPE_DIRECT)) {
+			*v = tcc_state->tok;
 			next(tcc_state);
 		}
 		else {
@@ -3591,7 +3591,7 @@ static void type_decl(TCCState* tcc_state, CType *type, AttributeDef *ad, int *v
 	else
 		post_type(tcc_state, type, ad);
 	type->t |= storage;
-	if (tok == TOK_ATTRIBUTE1 || tok == TOK_ATTRIBUTE2)
+	if (tcc_state->tok == TOK_ATTRIBUTE1 || tcc_state->tok == TOK_ATTRIBUTE2)
 		parse_attribute(tcc_state, ad);
 
 	if (!type1.t)
@@ -3711,7 +3711,7 @@ static void vpush_tokc(TCCState* tcc_state, int t)
 	CType type;
 	type.t = t;
 	type.ref = 0;
-	vsetc(tcc_state, &type, VT_CONST, &tokc);
+	vsetc(tcc_state, &type, VT_CONST, &tcc_state->tokc);
 }
 
 ST_FUNC void unary(TCCState* tcc_state)
@@ -3727,14 +3727,14 @@ ST_FUNC void unary(TCCState* tcc_state)
 	/* XXX: GCC 2.95.3 does not generate a table although it should be
 	better here */
 tok_next:
-	switch (tok) {
+	switch (tcc_state->tok) {
 	case TOK_EXTENSION:
 		next(tcc_state);
 		goto tok_next;
 	case TOK_CINT:
 	case TOK_CCHAR:
 	case TOK_LCHAR:
-		vpushi(tcc_state, tokc.i);
+		vpushi(tcc_state, tcc_state->tokc.i);
 		next(tcc_state);
 		break;
 	case TOK_CUINT:
@@ -3808,7 +3808,7 @@ tok_next:
 			type_decl(tcc_state, &type, &ad, &n, TYPE_ABSTRACT);
 			skip(tcc_state, ')');
 			/* check ISOC99 compound literal */
-			if (tok == '{') {
+			if (tcc_state->tok == '{') {
 				/* data is allocated locally by default */
 				if (global_expr)
 					r = VT_CONST;
@@ -3829,7 +3829,7 @@ tok_next:
 				gen_cast(tcc_state, &type);
 			}
 		}
-		else if (tok == '{') {
+		else if (tcc_state->tok == '{') {
 			/* save all registers */
 			save_regs(tcc_state, 0);
 			/* statement expression : we do not accept break/continue
@@ -3899,7 +3899,7 @@ tok_next:
 	case TOK_SIZEOF:
 	case TOK_ALIGNOF1:
 	case TOK_ALIGNOF2:
-		t = tok;
+		t = tcc_state->tok;
 		next(tcc_state);
 		in_sizeof++;
 		unary_type(tcc_state, &type); // Perform a in_sizeof = 0;
@@ -3955,10 +3955,10 @@ tok_next:
 		CType type;
 		next(tcc_state);
 		skip(tcc_state, '(');
-		if (tok != TOK_CINT || tokc.i < 0) {
+		if (tcc_state->tok != TOK_CINT || tcc_state->tokc.i < 0) {
 			tcc_error(tcc_state, "__builtin_frame_address only takes positive integers");
 		}
-		level = tokc.i;
+		level = tcc_state->tokc.i;
 		next(tcc_state);
 		skip(tcc_state, ')');
 		type.t = VT_VOID;
@@ -4002,7 +4002,7 @@ tok_next:
 #endif
 	case TOK_INC:
 	case TOK_DEC:
-		t = tok;
+		t = tcc_state->tok;
 		next(tcc_state);
 		unary(tcc_state);
 		inc(tcc_state, 0, t);
@@ -4032,11 +4032,11 @@ tok_next:
 			goto tok_identifier;
 		next(tcc_state);
 		/* allow to take the address of a label */
-		if (tok < TOK_UIDENT)
+		if (tcc_state->tok < TOK_UIDENT)
 			expect(tcc_state, "label identifier");
-		s = label_find(tcc_state, tok);
+		s = label_find(tcc_state, tcc_state->tok);
 		if (!s) {
-			s = label_push(tcc_state, &global_label_stack, tok, LABEL_FORWARD);
+			s = label_push(tcc_state, &global_label_stack, tcc_state->tok, LABEL_FORWARD);
 		}
 		else {
 			if (s->r == LABEL_DECLARED)
@@ -4067,14 +4067,14 @@ tok_next:
 
 	default:
 	tok_identifier :
-		t = tok;
+		t = tcc_state->tok;
 				   next(tcc_state);
 				   if (t < TOK_UIDENT)
 					   expect(tcc_state, "identifier");
 				   s = sym_find(tcc_state, t);
 				   if (!s) {
 					   const char *name = get_tok_str(tcc_state, t, NULL);
-					   if (tok != '(')
+					   if (tcc_state->tok != '(')
 						   tcc_error(tcc_state, "'%s' undeclared", name);
 					   /* for simple function calls, we tolerate undeclared
 					   external reference to int() function */
@@ -4113,14 +4113,14 @@ tok_next:
 
 	/* post operations */
 	while (1) {
-		if (tok == TOK_INC || tok == TOK_DEC) {
-			inc(tcc_state, 1, tok);
+		if (tcc_state->tok == TOK_INC || tcc_state->tok == TOK_DEC) {
+			inc(tcc_state, 1, tcc_state->tok);
 			next(tcc_state);
 		}
-		else if (tok == '.' || tok == TOK_ARROW) {
+		else if (tcc_state->tok == '.' || tcc_state->tok == TOK_ARROW) {
 			int qualifiers;
 			/* field */
-			if (tok == TOK_ARROW)
+			if (tcc_state->tok == TOK_ARROW)
 				indir(tcc_state);
 			qualifiers = vtop->type.t & (VT_CONSTANT | VT_VOLATILE);
 			test_lvalue(tcc_state);
@@ -4131,13 +4131,13 @@ tok_next:
 				expect(tcc_state, "struct or union");
 			s = vtop->type.ref;
 			/* find field */
-			tok |= SYM_FIELD;
+			tcc_state->tok |= SYM_FIELD;
 			while ((s = s->next) != NULL) {
-				if (s->v == tok)
+				if (s->v == tcc_state->tok)
 					break;
 			}
 			if (!s)
-				tcc_error(tcc_state, "field not found: %s", get_tok_str(tcc_state, tok & ~SYM_FIELD, NULL));
+				tcc_error(tcc_state, "field not found: %s", get_tok_str(tcc_state, tcc_state->tok & ~SYM_FIELD, NULL));
 			/* add field offset to pointer */
 			vtop->type = char_pointer_type; /* change type to 'char *' */
 			vpushi(tcc_state, s->c);
@@ -4156,14 +4156,14 @@ tok_next:
 			}
 			next(tcc_state);
 		}
-		else if (tok == '[') {
+		else if (tcc_state->tok == '[') {
 			next(tcc_state);
 			gexpr(tcc_state);
 			gen_op(tcc_state, '+');
 			indir(tcc_state);
 			skip(tcc_state, ']');
 		}
-		else if (tok == '(') {
+		else if (tcc_state->tok == '(') {
 			SValue ret;
 			Sym *sa;
 			int nb_args, ret_nregs, ret_align, variadic;
@@ -4233,14 +4233,14 @@ tok_next:
 				}
 				ret.c.i = 0;
 			}
-			if (tok != ')') {
+			if (tcc_state->tok != ')') {
 				for (;;) {
 					expr_eq(tcc_state);
 					gfunc_param_typed(tcc_state, s, sa);
 					nb_args++;
 					if (sa)
 						sa = sa->next;
-					if (tok == ')')
+					if (tcc_state->tok == ')')
 						break;
 					skip(tcc_state, ',');
 				}
@@ -4293,8 +4293,8 @@ ST_FUNC void expr_prod(TCCState *tcc_state)
 	int t;
 
 	unary(tcc_state);
-	while (tok == '*' || tok == '/' || tok == '%') {
-		t = tok;
+	while (tcc_state->tok == '*' || tcc_state->tok == '/' || tcc_state->tok == '%') {
+		t = tcc_state->tok;
 		next(tcc_state);
 		unary(tcc_state);
 		gen_op(tcc_state, t);
@@ -4306,8 +4306,8 @@ ST_FUNC void expr_sum(TCCState *tcc_state)
 	int t;
 
 	expr_prod(tcc_state);
-	while (tok == '+' || tok == '-') {
-		t = tok;
+	while (tcc_state->tok == '+' || tcc_state->tok == '-') {
+		t = tcc_state->tok;
 		next(tcc_state);
 		expr_prod(tcc_state);
 		gen_op(tcc_state, t);
@@ -4319,8 +4319,8 @@ static void expr_shift(TCCState *tcc_state)
 	int t;
 
 	expr_sum(tcc_state);
-	while (tok == TOK_SHL || tok == TOK_SAR) {
-		t = tok;
+	while (tcc_state->tok == TOK_SHL || tcc_state->tok == TOK_SAR) {
+		t = tcc_state->tok;
 		next(tcc_state);
 		expr_sum(tcc_state);
 		gen_op(tcc_state, t);
@@ -4332,9 +4332,9 @@ static void expr_cmp(TCCState *tcc_state)
 	int t;
 
 	expr_shift(tcc_state);
-	while ((tok >= TOK_ULE && tok <= TOK_GT) ||
-		tok == TOK_ULT || tok == TOK_UGE) {
-		t = tok;
+	while ((tcc_state->tok >= TOK_ULE && tcc_state->tok <= TOK_GT) ||
+		tcc_state->tok == TOK_ULT || tcc_state->tok == TOK_UGE) {
+		t = tcc_state->tok;
 		next(tcc_state);
 		expr_shift(tcc_state);
 		gen_op(tcc_state, t);
@@ -4346,8 +4346,8 @@ static void expr_cmpeq(TCCState *tcc_state)
 	int t;
 
 	expr_cmp(tcc_state);
-	while (tok == TOK_EQ || tok == TOK_NE) {
-		t = tok;
+	while (tcc_state->tok == TOK_EQ || tcc_state->tok == TOK_NE) {
+		t = tcc_state->tok;
 		next(tcc_state);
 		expr_cmp(tcc_state);
 		gen_op(tcc_state, t);
@@ -4357,7 +4357,7 @@ static void expr_cmpeq(TCCState *tcc_state)
 static void expr_and(TCCState *tcc_state)
 {
 	expr_cmpeq(tcc_state);
-	while (tok == '&') {
+	while (tcc_state->tok == '&') {
 		next(tcc_state);
 		expr_cmpeq(tcc_state);
 		gen_op(tcc_state, '&');
@@ -4367,7 +4367,7 @@ static void expr_and(TCCState *tcc_state)
 static void expr_xor(TCCState *tcc_state)
 {
 	expr_and(tcc_state);
-	while (tok == '^') {
+	while (tcc_state->tok == '^') {
 		next(tcc_state);
 		expr_and(tcc_state);
 		gen_op(tcc_state, '^');
@@ -4377,7 +4377,7 @@ static void expr_xor(TCCState *tcc_state)
 static void expr_or(TCCState *tcc_state)
 {
 	expr_xor(tcc_state);
-	while (tok == '|') {
+	while (tcc_state->tok == '|') {
 		next(tcc_state);
 		expr_xor(tcc_state);
 		gen_op(tcc_state, '|');
@@ -4388,7 +4388,7 @@ static void expr_or(TCCState *tcc_state)
 static void expr_land_const(TCCState *tcc_state)
 {
 	expr_or(tcc_state);
-	while (tok == TOK_LAND) {
+	while (tcc_state->tok == TOK_LAND) {
 		next(tcc_state);
 		expr_or(tcc_state);
 		gen_op(tcc_state, TOK_LAND);
@@ -4399,7 +4399,7 @@ static void expr_land_const(TCCState *tcc_state)
 static void expr_lor_const(TCCState *tcc_state)
 {
 	expr_land_const(tcc_state);
-	while (tok == TOK_LOR) {
+	while (tcc_state->tok == TOK_LOR) {
 		next(tcc_state);
 		expr_land_const(tcc_state);
 		gen_op(tcc_state, TOK_LOR);
@@ -4412,12 +4412,12 @@ static void expr_land(TCCState *tcc_state)
 	int t;
 
 	expr_or(tcc_state);
-	if (tok == TOK_LAND) {
+	if (tcc_state->tok == TOK_LAND) {
 		t = 0;
 		save_regs(tcc_state, 1);
 		for (;;) {
 			t = gvtst(tcc_state, 1, t);
-			if (tok != TOK_LAND) {
+			if (tcc_state->tok != TOK_LAND) {
 				vseti(tcc_state, VT_JMPI, t);
 				break;
 			}
@@ -4432,12 +4432,12 @@ static void expr_lor(TCCState *tcc_state)
 	int t;
 
 	expr_land(tcc_state);
-	if (tok == TOK_LOR) {
+	if (tcc_state->tok == TOK_LOR) {
 		t = 0;
 		save_regs(tcc_state, 1);
 		for (;;) {
 			t = gvtst(tcc_state, 0, t);
-			if (tok != TOK_LOR) {
+			if (tcc_state->tok != TOK_LOR) {
 				vseti(tcc_state, VT_JMP, t);
 				break;
 			}
@@ -4456,7 +4456,7 @@ static void expr_cond(TCCState *tcc_state)
 
 	if (const_wanted) {
 		expr_lor_const(tcc_state);
-		if (tok == '?') {
+		if (tcc_state->tok == '?') {
 			CType boolean;
 			int c;
 			boolean.t = VT_BOOL;
@@ -4465,7 +4465,7 @@ static void expr_cond(TCCState *tcc_state)
 			c = vtop->c.i;
 			vpop(tcc_state);
 			next(tcc_state);
-			if (tok != ':' || !tcc_state->gnu_ext) {
+			if (tcc_state->tok != ':' || !tcc_state->gnu_ext) {
 				vpop(tcc_state);
 				gexpr(tcc_state);
 			}
@@ -4479,7 +4479,7 @@ static void expr_cond(TCCState *tcc_state)
 	}
 	else {
 		expr_lor(tcc_state);
-		if (tok == '?') {
+		if (tcc_state->tok == '?') {
 			next(tcc_state);
 			if (vtop != vstack) {
 				/* needed to avoid having different registers saved in
@@ -4497,7 +4497,7 @@ static void expr_cond(TCCState *tcc_state)
 				gv(tcc_state, rc);
 				save_regs(tcc_state, 1);
 			}
-			if (tok == ':' && tcc_state->gnu_ext) {
+			if (tcc_state->tok == ':' && tcc_state->gnu_ext) {
 				gv_dup(tcc_state);
 				tt = gvtst(tcc_state, 1, 0);
 			}
@@ -4613,12 +4613,12 @@ static void expr_eq(TCCState *tcc_state)
 	int t;
 
 	expr_cond(tcc_state);
-	if (tok == '=' ||
-		(tok >= TOK_A_MOD && tok <= TOK_A_DIV) ||
-		tok == TOK_A_XOR || tok == TOK_A_OR ||
-		tok == TOK_A_SHL || tok == TOK_A_SAR) {
+	if (tcc_state->tok == '=' ||
+		(tcc_state->tok >= TOK_A_MOD && tcc_state->tok <= TOK_A_DIV) ||
+		tcc_state->tok == TOK_A_XOR || tcc_state->tok == TOK_A_OR ||
+		tcc_state->tok == TOK_A_SHL || tcc_state->tok == TOK_A_SAR) {
 		test_lvalue(tcc_state);
-		t = tok;
+		t = tcc_state->tok;
 		next(tcc_state);
 		if (t == '=') {
 			expr_eq(tcc_state);
@@ -4636,7 +4636,7 @@ ST_FUNC void gexpr(TCCState *tcc_state)
 {
 	while (1) {
 		expr_eq(tcc_state);
-		if (tok != ',')
+		if (tcc_state->tok != ',')
 			break;
 		vpop(tcc_state);
 		next(tcc_state);
@@ -4699,12 +4699,12 @@ static int is_label(TCCState* tcc_state)
 	int last_tok;
 
 	/* fast test first */
-	if (tok < TOK_UIDENT)
+	if (tcc_state->tok < TOK_UIDENT)
 		return 0;
 	/* no need to save tokc because tok is an identifier */
-	last_tok = tok;
+	last_tok = tcc_state->tok;
 	next(tcc_state);
-	if (tok == ':') {
+	if (tcc_state->tok == ':') {
 		next(tcc_state);
 		return last_tok;
 	}
@@ -4719,12 +4719,12 @@ static void label_or_decl(TCCState* tcc_state, int l)
 	int last_tok;
 
 	/* fast test first */
-	if (tok >= TOK_UIDENT)
+	if (tcc_state->tok >= TOK_UIDENT)
 	{
 		/* no need to save tokc because tok is an identifier */
-		last_tok = tok;
+		last_tok = tcc_state->tok;
 		next(tcc_state);
-		if (tok == ':') {
+		if (tcc_state->tok == ':') {
 			unget_tok(tcc_state, last_tok);
 			return;
 		}
@@ -4741,10 +4741,10 @@ static void block(TCCState* tcc_state, int *bsym, int *csym, int *case_sym, int 
 
 	/* generate line number info */
 	if (tcc_state->do_debug &&
-		(last_line_num != file->line_num || last_ind != ind)) {
-		put_stabn(tcc_state, N_SLINE, 0, file->line_num, ind - func_ind);
+		(last_line_num != tcc_state->file->line_num || last_ind != ind)) {
+		put_stabn(tcc_state, N_SLINE, 0, tcc_state->file->line_num, ind - func_ind);
 		last_ind = ind;
-		last_line_num = file->line_num;
+		last_line_num = tcc_state->file->line_num;
 	}
 
 	if (is_expr) {
@@ -4753,7 +4753,7 @@ static void block(TCCState* tcc_state, int *bsym, int *csym, int *case_sym, int 
 		vtop->type.t = VT_VOID;
 	}
 
-	if (tok == TOK_IF) {
+	if (tcc_state->tok == TOK_IF) {
 		/* if test */
 		next(tcc_state);
 		skip(tcc_state, '(');
@@ -4761,7 +4761,7 @@ static void block(TCCState* tcc_state, int *bsym, int *csym, int *case_sym, int 
 		skip(tcc_state, ')');
 		a = gvtst(tcc_state, 1, 0);
 		block(tcc_state, bsym, csym, case_sym, def_sym, case_reg, 0);
-		c = tok;
+		c = tcc_state->tok;
 		if (c == TOK_ELSE) {
 			next(tcc_state);
 			d = gjmp(tcc_state, 0);
@@ -4772,7 +4772,7 @@ static void block(TCCState* tcc_state, int *bsym, int *csym, int *case_sym, int 
 		else
 			gsym(tcc_state, a);
 	}
-	else if (tok == TOK_WHILE) {
+	else if (tcc_state->tok == TOK_WHILE) {
 		next(tcc_state);
 		d = ind;
 		skip(tcc_state, '(');
@@ -4785,7 +4785,7 @@ static void block(TCCState* tcc_state, int *bsym, int *csym, int *case_sym, int 
 		gsym(tcc_state, a);
 		gsym_addr(tcc_state, b, d);
 	}
-	else if (tok == '{') {
+	else if (tcc_state->tok == '{') {
 		Sym *llabel;
 		int block_vla_sp_loc, *saved_vla_sp_loc, saved_vla_flags;
 
@@ -4806,14 +4806,14 @@ static void block(TCCState* tcc_state, int *bsym, int *csym, int *case_sym, int 
 		vla_flags |= VLA_NEED_NEW_FRAME;
 
 		/* handle local labels declarations */
-		if (tok == TOK_LABEL) {
+		if (tcc_state->tok == TOK_LABEL) {
 			next(tcc_state);
 			for (;;) {
-				if (tok < TOK_UIDENT)
+				if (tcc_state->tok < TOK_UIDENT)
 					expect(tcc_state, "label identifier");
-				label_push(tcc_state, &local_label_stack, tok, LABEL_DECLARED);
+				label_push(tcc_state, &local_label_stack, tcc_state->tok, LABEL_DECLARED);
 				next(tcc_state);
-				if (tok == ',') {
+				if (tcc_state->tok == ',') {
 					next(tcc_state);
 				}
 				else {
@@ -4822,9 +4822,9 @@ static void block(TCCState* tcc_state, int *bsym, int *csym, int *case_sym, int 
 				}
 			}
 		}
-		while (tok != '}') {
+		while (tcc_state->tok != '}') {
 			label_or_decl(tcc_state, VT_LOCAL);
-			if (tok != '}') {
+			if (tcc_state->tok != '}') {
 				if (is_expr)
 					vpop(tcc_state);
 				block(tcc_state, bsym, csym, case_sym, def_sym, case_reg, is_expr);
@@ -4861,9 +4861,9 @@ static void block(TCCState* tcc_state, int *bsym, int *csym, int *case_sym, int 
 
 		next(tcc_state);
 	}
-	else if (tok == TOK_RETURN) {
+	else if (tcc_state->tok == TOK_RETURN) {
 		next(tcc_state);
-		if (tok != ';') {
+		if (tcc_state->tok != ';') {
 			gexpr(tcc_state);
 			gen_assign_cast(tcc_state, &func_vt);
 			if ((func_vt.t & VT_BTYPE) == VT_STRUCT) {
@@ -4927,7 +4927,7 @@ static void block(TCCState* tcc_state, int *bsym, int *csym, int *case_sym, int 
 		skip(tcc_state, ';');
 		rsym = gjmp(tcc_state, rsym); /* jmp */
 	}
-	else if (tok == TOK_BREAK) {
+	else if (tcc_state->tok == TOK_BREAK) {
 		/* compute jump */
 		if (!bsym)
 			tcc_error(tcc_state, "cannot break");
@@ -4935,7 +4935,7 @@ static void block(TCCState* tcc_state, int *bsym, int *csym, int *case_sym, int 
 		next(tcc_state);
 		skip(tcc_state, ';');
 	}
-	else if (tok == TOK_CONTINUE) {
+	else if (tcc_state->tok == TOK_CONTINUE) {
 		/* compute jump */
 		if (!csym)
 			tcc_error(tcc_state, "cannot continue");
@@ -4943,7 +4943,7 @@ static void block(TCCState* tcc_state, int *bsym, int *csym, int *case_sym, int 
 		next(tcc_state);
 		skip(tcc_state, ';');
 	}
-	else if (tok == TOK_FOR) {
+	else if (tcc_state->tok == TOK_FOR) {
 		int e;
 		next(tcc_state);
 		skip(tcc_state, '(');
@@ -4951,7 +4951,7 @@ static void block(TCCState* tcc_state, int *bsym, int *csym, int *case_sym, int 
 		frame_bottom = sym_push2(tcc_state, &local_stack, SYM_FIELD, 0, 0);
 		frame_bottom->next = scope_stack_bottom;
 		scope_stack_bottom = frame_bottom;
-		if (tok != ';') {
+		if (tcc_state->tok != ';') {
 			/* c99 for-loop init decl? */
 			if (!decl0(tcc_state, VT_LOCAL, 1)) {
 				/* no, regular for-loop init expr */
@@ -4964,12 +4964,12 @@ static void block(TCCState* tcc_state, int *bsym, int *csym, int *case_sym, int 
 		c = ind;
 		a = 0;
 		b = 0;
-		if (tok != ';') {
+		if (tcc_state->tok != ';') {
 			gexpr(tcc_state);
 			a = gvtst(tcc_state, 1, 0);
 		}
 		skip(tcc_state, ';');
-		if (tok != ')') {
+		if (tcc_state->tok != ')') {
 			e = gjmp(tcc_state, 0);
 			c = ind;
 			gexpr(tcc_state);
@@ -4986,7 +4986,7 @@ static void block(TCCState* tcc_state, int *bsym, int *csym, int *case_sym, int 
 		sym_pop(tcc_state, &local_stack, s);
 	}
 	else
-		if (tok == TOK_DO) {
+		if (tcc_state->tok == TOK_DO) {
 		next(tcc_state);
 		a = 0;
 		b = 0;
@@ -5003,7 +5003,7 @@ static void block(TCCState* tcc_state, int *bsym, int *csym, int *case_sym, int 
 		skip(tcc_state, ';');
 		}
 		else
-			if (tok == TOK_SWITCH) {
+			if (tcc_state->tok == TOK_SWITCH) {
 		next(tcc_state);
 		skip(tcc_state, '(');
 		gexpr(tcc_state);
@@ -5024,14 +5024,14 @@ static void block(TCCState* tcc_state, int *bsym, int *csym, int *case_sym, int 
 		gsym(tcc_state, a);
 			}
 			else
-				if (tok == TOK_CASE) {
+				if (tcc_state->tok == TOK_CASE) {
 		int v1, v2;
 		if (!case_sym)
 			expect(tcc_state, "switch");
 		next(tcc_state);
 		v1 = expr_const(tcc_state);
 		v2 = v1;
-		if (tcc_state->gnu_ext && tok == TOK_DOTS) {
+		if (tcc_state->gnu_ext && tcc_state->tok == TOK_DOTS) {
 			next(tcc_state);
 			v2 = expr_const(tcc_state);
 			if (v2 < v1)
@@ -5060,7 +5060,7 @@ static void block(TCCState* tcc_state, int *bsym, int *csym, int *case_sym, int 
 		goto block_after_label;
 				}
 				else
-					if (tok == TOK_DEFAULT) {
+					if (tcc_state->tok == TOK_DEFAULT) {
 		next(tcc_state);
 		skip(tcc_state, ':');
 		if (!def_sym)
@@ -5072,9 +5072,9 @@ static void block(TCCState* tcc_state, int *bsym, int *csym, int *case_sym, int 
 		goto block_after_label;
 					}
 					else
-						if (tok == TOK_GOTO) {
+						if (tcc_state->tok == TOK_GOTO) {
 		next(tcc_state);
-		if (tok == '*' && tcc_state->gnu_ext) {
+		if (tcc_state->tok == '*' && tcc_state->gnu_ext) {
 			/* computed goto */
 			next(tcc_state);
 			gexpr(tcc_state);
@@ -5082,11 +5082,11 @@ static void block(TCCState* tcc_state, int *bsym, int *csym, int *case_sym, int 
 				expect(tcc_state, "pointer");
 			ggoto(tcc_state);
 		}
-		else if (tok >= TOK_UIDENT) {
-			s = label_find(tcc_state, tok);
+		else if (tcc_state->tok >= TOK_UIDENT) {
+			s = label_find(tcc_state, tcc_state->tok);
 			/* put forward definition if needed */
 			if (!s) {
-				s = label_push(tcc_state, &global_label_stack, tok, LABEL_FORWARD);
+				s = label_push(tcc_state, &global_label_stack, tcc_state->tok, LABEL_FORWARD);
 			}
 			else {
 				if (s->r == LABEL_DECLARED)
@@ -5111,7 +5111,7 @@ static void block(TCCState* tcc_state, int *bsym, int *csym, int *case_sym, int 
 		}
 		skip(tcc_state, ';');
 						}
-						else if (tok == TOK_ASM1 || tok == TOK_ASM2 || tok == TOK_ASM3) {
+						else if (tcc_state->tok == TOK_ASM1 || tcc_state->tok == TOK_ASM2 || tcc_state->tok == TOK_ASM3) {
 							asm_instr(tcc_state);
 						}
 						else {
@@ -5141,7 +5141,7 @@ static void block(TCCState* tcc_state, int *bsym, int *csym, int *case_sym, int 
 								}
 								/* we accept this, but it is a mistake */
 							block_after_label:
-								if (tok == '}') {
+								if (tcc_state->tok == '}') {
 									tcc_warning(tcc_state, "deprecated use of label at end of compound statement");
 								}
 								else {
@@ -5152,7 +5152,7 @@ static void block(TCCState* tcc_state, int *bsym, int *csym, int *case_sym, int 
 							}
 							else {
 								/* expression case */
-								if (tok != ';') {
+								if (tcc_state->tok != ';') {
 									if (is_expr) {
 										vpop(tcc_state);
 										gexpr(tcc_state);
@@ -5184,8 +5184,8 @@ static void decl_designator(TCCState *tcc_state, CType *type, Section *sec, unsi
 	nb_elems = 1;
 	if (tcc_state->gnu_ext && (l = is_label(tcc_state)) != 0)
 		goto struct_field;
-	while (tok == '[' || tok == '.') {
-		if (tok == '[') {
+	while (tcc_state->tok == '[' || tcc_state->tok == '.') {
+		if (tcc_state->tok == '[') {
 			if (!(type->t & VT_ARRAY))
 				expect(tcc_state, "array type");
 			s = type->ref;
@@ -5193,7 +5193,7 @@ static void decl_designator(TCCState *tcc_state, CType *type, Section *sec, unsi
 			index = expr_const(tcc_state);
 			if (index < 0 || (s->c >= 0 && index >= s->c))
 				expect(tcc_state, "invalid index");
-			if (tok == TOK_DOTS && tcc_state->gnu_ext) {
+			if (tcc_state->tok == TOK_DOTS && tcc_state->gnu_ext) {
 				next(tcc_state);
 				index_last = expr_const(tcc_state);
 				if (index_last < 0 ||
@@ -5219,7 +5219,7 @@ static void decl_designator(TCCState *tcc_state, CType *type, Section *sec, unsi
 		}
 		else {
 			next(tcc_state);
-			l = tok;
+			l = tcc_state->tok;
 			next(tcc_state);
 		struct_field:
 			if ((type->t & VT_BTYPE) != VT_STRUCT)
@@ -5245,7 +5245,7 @@ static void decl_designator(TCCState *tcc_state, CType *type, Section *sec, unsi
 		notfirst = 1;
 	}
 	if (notfirst) {
-		if (tok == '=') {
+		if (tcc_state->tok == '=') {
 			next(tcc_state);
 		}
 		else {
@@ -5455,9 +5455,9 @@ static void decl_initializer(TCCState* tcc_state, CType *type, Section *sec, uns
 		size1 = type_size(t1, &align1);
 
 		no_oblock = 1;
-		if ((first && tok != TOK_LSTR && tok != TOK_STR) ||
-			tok == '{') {
-			if (tok != '{')
+		if ((first && tcc_state->tok != TOK_LSTR && tcc_state->tok != TOK_STR) ||
+			tcc_state->tok == '{') {
+			if (tcc_state->tok != '{')
 				tcc_error(tcc_state, "character array initializer must be a literal,"
 				" optionally enclosed in braces");
 			skip(tcc_state, '{');
@@ -5466,20 +5466,20 @@ static void decl_initializer(TCCState* tcc_state, CType *type, Section *sec, uns
 
 		/* only parse strings here if correct type (otherwise: handle
 		them as ((w)char *) expressions */
-		if ((tok == TOK_LSTR &&
+		if ((tcc_state->tok == TOK_LSTR &&
 #ifdef TCC_TARGET_PE
 			(t1->t & VT_BTYPE) == VT_SHORT && (t1->t & VT_UNSIGNED)
 #else
 			(t1->t & VT_BTYPE) == VT_INT
 #endif
-			) || (tok == TOK_STR && (t1->t & VT_BTYPE) == VT_BYTE)) {
-			while (tok == TOK_STR || tok == TOK_LSTR) {
+			) || (tcc_state->tok == TOK_STR && (t1->t & VT_BTYPE) == VT_BYTE)) {
+			while (tcc_state->tok == TOK_STR || tcc_state->tok == TOK_LSTR) {
 				int cstr_len, ch;
 				CString *cstr;
 
-				cstr = tokc.cstr;
+				cstr = tcc_state->tokc.cstr;
 				/* compute maximum number of chars wanted */
-				if (tok == TOK_STR)
+				if (tcc_state->tok == TOK_STR)
 					cstr_len = cstr->size;
 				else
 					cstr_len = cstr->size / sizeof(nwchar_t);
@@ -5493,12 +5493,12 @@ static void decl_initializer(TCCState* tcc_state, CType *type, Section *sec, uns
 					/* in order to go faster for common case (char
 					string in global variable, we handle it
 					specifically */
-					if (sec && tok == TOK_STR && size1 == 1) {
+					if (sec && tcc_state->tok == TOK_STR && size1 == 1) {
 						memcpy(sec->data + c + array_length, cstr->data, nb);
 					}
 					else {
 						for (i = 0; i<nb; i++) {
-							if (tok == TOK_STR)
+							if (tcc_state->tok == TOK_STR)
 								ch = ((unsigned char *)cstr->data)[i];
 							else
 								ch = ((nwchar_t *)cstr->data)[i];
@@ -5521,7 +5521,7 @@ static void decl_initializer(TCCState* tcc_state, CType *type, Section *sec, uns
 		}
 		else {
 			index = 0;
-			while (tok != '}') {
+			while (tcc_state->tok != '}') {
 				decl_designator(tcc_state, type, sec, c, &index, NULL, size_only);
 				if (n >= 0 && index >= n)
 					tcc_error(tcc_state, "index too large");
@@ -5539,7 +5539,7 @@ static void decl_initializer(TCCState* tcc_state, CType *type, Section *sec, uns
 				same time) */
 				if (index >= n && no_oblock)
 					break;
-				if (tok == '}')
+				if (tcc_state->tok == '}')
 					break;
 				skip(tcc_state, ',');
 			}
@@ -5556,7 +5556,7 @@ static void decl_initializer(TCCState* tcc_state, CType *type, Section *sec, uns
 			s->c = array_length;
 	}
 	else if ((type->t & VT_BTYPE) == VT_STRUCT &&
-		(sec || !first || tok == '{')) {
+		(sec || !first || tcc_state->tok == '{')) {
 		int par_count;
 
 		/* NOTE: the previous test is a specific case for automatic
@@ -5568,11 +5568,11 @@ static void decl_initializer(TCCState* tcc_state, CType *type, Section *sec, uns
 		to do it correctly (ideally, the expression parser should
 		be used in all cases) */
 		par_count = 0;
-		if (tok == '(') {
+		if (tcc_state->tok == '(') {
 			AttributeDef ad1;
 			CType type1;
 			next(tcc_state);
-			while (tok == '(') {
+			while (tcc_state->tok == '(') {
 				par_count++;
 				next(tcc_state);
 			}
@@ -5586,7 +5586,7 @@ static void decl_initializer(TCCState* tcc_state, CType *type, Section *sec, uns
 			skip(tcc_state, ')');
 		}
 		no_oblock = 1;
-		if (first || tok == '{') {
+		if (first || tcc_state->tok == '{') {
 			skip(tcc_state, '{');
 			no_oblock = 0;
 		}
@@ -5595,7 +5595,7 @@ static void decl_initializer(TCCState* tcc_state, CType *type, Section *sec, uns
 		array_length = 0;
 		index = 0;
 		n = s->c;
-		while (tok != '}') {
+		while (tcc_state->tok != '}') {
 			decl_designator(tcc_state, type, sec, c, NULL, &f, size_only);
 			index = f->c;
 			if (!size_only && array_length < index) {
@@ -5626,7 +5626,7 @@ static void decl_initializer(TCCState* tcc_state, CType *type, Section *sec, uns
 			f = f->next;
 			if (no_oblock && f == NULL)
 				break;
-			if (tok == '}')
+			if (tcc_state->tok == '}')
 				break;
 			skip(tcc_state, ',');
 		}
@@ -5642,7 +5642,7 @@ static void decl_initializer(TCCState* tcc_state, CType *type, Section *sec, uns
 			par_count--;
 		}
 	}
-	else if (tok == '{') {
+	else if (tcc_state->tok == '{') {
 		next(tcc_state);
 		decl_initializer(tcc_state, type, sec, c, first, size_only);
 		skip(tcc_state, '}');
@@ -5651,14 +5651,14 @@ static void decl_initializer(TCCState* tcc_state, CType *type, Section *sec, uns
 		/* just skip expression */
 		parlevel = parlevel1 = 0;
 		while ((parlevel > 0 || parlevel1 > 0 ||
-			(tok != '}' && tok != ',')) && tok != -1) {
-			if (tok == '(')
+			(tcc_state->tok != '}' && tcc_state->tok != ',')) && tcc_state->tok != -1) {
+			if (tcc_state->tok == '(')
 				parlevel++;
-			else if (tok == ')')
+			else if (tcc_state->tok == ')')
 				parlevel--;
-			else if (tok == '{')
+			else if (tcc_state->tok == '{')
 				parlevel1++;
-			else if (tok == '}')
+			else if (tcc_state->tok == '}')
 				parlevel1--;
 			next(tcc_state);
 		}
@@ -5715,20 +5715,20 @@ static void decl_initializer_alloc(TCCState* tcc_state, CType *type, AttributeDe
 		/* get all init string */
 		if (has_init == 2) {
 			/* only get strings */
-			while (tok == TOK_STR || tok == TOK_LSTR) {
+			while (tcc_state->tok == TOK_STR || tcc_state->tok == TOK_LSTR) {
 				tok_str_add_tok(tcc_state, &init_str);
 				next(tcc_state);
 			}
 		}
 		else {
 			level = 0;
-			while (level > 0 || (tok != ',' && tok != ';')) {
-				if (tok < 0)
+			while (level > 0 || (tcc_state->tok != ',' && tcc_state->tok != ';')) {
+				if (tcc_state->tok < 0)
 					tcc_error(tcc_state, "unexpected end of file in initializer");
 				tok_str_add_tok(tcc_state, &init_str);
-				if (tok == '{')
+				if (tcc_state->tok == '{')
 					level++;
-				else if (tok == '}') {
+				else if (tcc_state->tok == '}') {
 					level--;
 					if (level <= 0) {
 						next(tcc_state);
@@ -5744,11 +5744,11 @@ static void decl_initializer_alloc(TCCState* tcc_state, CType *type, AttributeDe
 		/* compute size */
 		save_parse_state(&saved_parse_state);
 
-		macro_ptr = init_str.str;
+		tcc_state->macro_ptr = init_str.str;
 		next(tcc_state);
 		decl_initializer(tcc_state, type, NULL, 0, 1, 1);
 		/* prepare second initializer parsing */
-		macro_ptr = init_str.str;
+		tcc_state->macro_ptr = init_str.str;
 		next(tcc_state);
 
 		size = type_size(type, &align);
@@ -5938,10 +5938,10 @@ static void put_func_debug(TCCState* tcc_state, Sym *sym)
 	/* XXX: we put here a dummy type */
 	snprintf(buf, sizeof(buf), "%s:%c1",
 		funcname, sym->type.t & VT_STATIC ? 'f' : 'F');
-	put_stabs_r(tcc_state, buf, N_FUN, 0, file->line_num, 0,
+	put_stabs_r(tcc_state, buf, N_FUN, 0, tcc_state->file->line_num, 0,
 		cur_text_section, sym->c);
 	/* //gr gdb wants a line at the function */
-	put_stabn(tcc_state, N_SLINE, 0, file->line_num, 0);
+	put_stabn(tcc_state, N_SLINE, 0, tcc_state->file->line_num, 0);
 	last_ind = 0;
 	last_line_num = 0;
 }
@@ -5956,13 +5956,13 @@ static void func_decl_list(TCCState* tcc_state, Sym *func_sym)
 	CType btype, type;
 
 	/* parse each declaration */
-	while (tok != '{' && tok != ';' && tok != ',' && tok != TOK_EOF &&
-		tok != TOK_ASM1 && tok != TOK_ASM2 && tok != TOK_ASM3) {
+	while (tcc_state->tok != '{' && tcc_state->tok != ';' && tcc_state->tok != ',' && tcc_state->tok != TOK_EOF &&
+		tcc_state->tok != TOK_ASM1 && tcc_state->tok != TOK_ASM2 && tcc_state->tok != TOK_ASM3) {
 		if (!parse_btype(tcc_state, &btype, &ad))
 			expect(tcc_state, "declaration list");
 		if (((btype.t & VT_BTYPE) == VT_ENUM ||
 			(btype.t & VT_BTYPE) == VT_STRUCT) &&
-			tok == ';') {
+			tcc_state->tok == ';') {
 			/* we accept no variable after */
 		}
 		else {
@@ -5986,7 +5986,7 @@ static void func_decl_list(TCCState* tcc_state, Sym *func_sym)
 				/* we can add the type (NOTE: it could be local to the function) */
 				s->type = type;
 				/* accept other parameters */
-				if (tok == ',')
+				if (tcc_state->tok == ',')
 					next(tcc_state);
 				else
 					break;
@@ -6074,16 +6074,16 @@ ST_FUNC void gen_inline_functions(TCCState* tcc_state)
 				convert it to a normal function */
 				str = fn->token_str;
 				fn->sym = NULL;
-				if (file)
-					pstrcpy(file->filename, sizeof file->filename, fn->filename);
+				if (tcc_state->file)
+					pstrcpy(tcc_state->file->filename, sizeof tcc_state->file->filename, fn->filename);
 				sym->r = VT_SYM | VT_CONST;
 				sym->type.t &= ~VT_INLINE;
 
-				macro_ptr = str;
+				tcc_state->macro_ptr = str;
 				next(tcc_state);
 				cur_text_section = text_section;
 				gen_function(tcc_state, sym);
-				macro_ptr = NULL; /* fail safe */
+				tcc_state->macro_ptr = NULL; /* fail safe */
 
 				inline_generated = 1;
 			}
@@ -6113,25 +6113,25 @@ static int decl0(TCCState* tcc_state, int l, int is_for_loop_init)
 				return 0;
 			/* skip redundant ';' */
 			/* XXX: find more elegant solution */
-			if (tok == ';') {
+			if (tcc_state->tok == ';') {
 				next(tcc_state);
 				continue;
 			}
 			if (l == VT_CONST &&
-				(tok == TOK_ASM1 || tok == TOK_ASM2 || tok == TOK_ASM3)) {
+				(tcc_state->tok == TOK_ASM1 || tcc_state->tok == TOK_ASM2 || tcc_state->tok == TOK_ASM3)) {
 				/* global asm block */
 				asm_global_instr(tcc_state);
 				continue;
 			}
 			/* special test for old K&R protos without explicit int
 			type. Only accepted when defining global data */
-			if (l == VT_LOCAL || tok < TOK_DEFINE)
+			if (l == VT_LOCAL || tcc_state->tok < TOK_DEFINE)
 				break;
 			btype.t = VT_INT;
 		}
 		if (((btype.t & VT_BTYPE) == VT_ENUM ||
 			(btype.t & VT_BTYPE) == VT_STRUCT) &&
-			tok == ';') {
+			tcc_state->tok == ';') {
 			/* we accept no variable after */
 			next(tcc_state);
 			continue;
@@ -6159,7 +6159,7 @@ static int decl0(TCCState* tcc_state, int l, int is_for_loop_init)
 			}
 
 			asm_label = NULL;
-			if (tcc_state->gnu_ext && (tok == TOK_ASM1 || tok == TOK_ASM2 || tok == TOK_ASM3)) {
+			if (tcc_state->gnu_ext && (tcc_state->tok == TOK_ASM1 || tcc_state->tok == TOK_ASM2 || tcc_state->tok == TOK_ASM3)) {
 				CString astr;
 
 				asm_label_instr(tcc_state, &astr);
@@ -6180,7 +6180,7 @@ static int decl0(TCCState* tcc_state, int l, int is_for_loop_init)
 #endif
 			type.t |= ad.a.visibility << VT_VIS_SHIFT;
 
-			if (tok == '{') {
+			if (tcc_state->tok == '{') {
 				if (l == VT_LOCAL)
 					tcc_error(tcc_state, "cannot use local functions");
 				if ((type.t & VT_BTYPE) != VT_FUNC)
@@ -6254,10 +6254,10 @@ static int decl0(TCCState* tcc_state, int l, int is_for_loop_init)
 					block_level = 0;
 					for (;;) {
 						int t;
-						if (tok == TOK_EOF)
+						if (tcc_state->tok == TOK_EOF)
 							tcc_error(tcc_state, "unexpected end of file");
 						tok_str_add_tok(tcc_state, &func_str);
-						t = tok;
+						t = tcc_state->tok;
 						next(tcc_state);
 						if (t == '{') {
 							block_level++;
@@ -6270,7 +6270,7 @@ static int decl0(TCCState* tcc_state, int l, int is_for_loop_init)
 					}
 					tok_str_add(tcc_state, &func_str, -1);
 					tok_str_add(tcc_state, &func_str, 0);
-					filename = file ? file->filename : "";
+					filename = tcc_state->file ? tcc_state->file->filename : "";
 					fn = tcc_malloc(tcc_state, sizeof *fn + strlen(filename));
 					strcpy(fn->filename, filename);
 					fn->sym = sym;
@@ -6308,7 +6308,7 @@ static int decl0(TCCState* tcc_state, int l, int is_for_loop_init)
 						/* not lvalue if array */
 						r |= lvalue_type(type.t);
 					}
-					has_init = (tok == '=');
+					has_init = (tcc_state->tok == '=');
 					if (has_init && (type.t & VT_VLA))
 						tcc_error(tcc_state, "Variable length array cannot be initialized");
 					if ((btype.t & VT_EXTERN) || ((type.t & VT_BTYPE) == VT_FUNC) ||
@@ -6344,7 +6344,7 @@ static int decl0(TCCState* tcc_state, int l, int is_for_loop_init)
 						decl_initializer_alloc(tcc_state, &type, &ad, r, has_init, v, asm_label, l);
 					}
 				}
-				if (tok != ',') {
+				if (tcc_state->tok != ',') {
 					if (is_for_loop_init)
 						return 1;
 					skip(tcc_state, ';');

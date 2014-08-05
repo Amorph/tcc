@@ -736,9 +736,22 @@ struct TCCState {
 	int tcc_ext;
 
 #ifdef MEM_DEBUG
-	ST_DATA int mem_cur_size;
-	ST_DATA int mem_max_size;
+	int mem_cur_size;
+	int mem_max_size;
 #endif
+	struct BufferedFile *file;
+	int ch, tok;
+	CValue tokc;
+	const int *macro_ptr;
+	int parse_flags;
+	int tok_flags;
+	CString tokcstr; /* current parsed string, if any */
+
+	/* display benchmark infos */
+	int total_lines;
+	int total_bytes;
+	int tok_ident;
+	TokenSym **table_ident;
 };
 
 /* The current value can be: */
@@ -1097,20 +1110,6 @@ PUB_FUNC int tcc_parse_args(TCCState *s, int argc, char **argv);
 PUB_FUNC void tcc_set_environment(TCCState *s);
 
 /* ------------ tccpp.c ------------ */
-
-ST_DATA struct BufferedFile *file;
-ST_DATA int ch, tok;
-ST_DATA CValue tokc;
-ST_DATA const int *macro_ptr;
-ST_DATA int parse_flags;
-ST_DATA int tok_flags;
-ST_DATA CString tokcstr; /* current parsed string, if any */
-
-/* display benchmark infos */
-ST_DATA int total_lines;
-ST_DATA int total_bytes;
-ST_DATA int tok_ident;
-ST_DATA TokenSym **table_ident;
 
 #define TOK_FLAG_BOL   0x0001 /* beginning of line before */
 #define TOK_FLAG_BOF   0x0002 /* beginning of file before */

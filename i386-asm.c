@@ -239,14 +239,14 @@ static const uint16_t op0_codes[] = {
 #endif
 };
 
-static inline int get_reg_shift(TCCState *s1)
+static inline int get_reg_shift(TCCState *tcc_state)
 {
 	int shift, v;
 #ifdef I386_ASM_16
-	if (s1->seg_size == 16)
-		tcc_error(s1, "invalid effective address");
+	if (tcc_state->seg_size == 16)
+		tcc_error(tcc_state, "invalid effective address");
 #endif
-	v = asm_int_expr(s1);
+	v = asm_int_expr(tcc_state);
 	switch (v) {
 	case 1:
 		shift = 0;
@@ -261,7 +261,7 @@ static inline int get_reg_shift(TCCState *s1)
 		shift = 3;
 		break;
 	default:
-		expect(s1, "1, 2, 4 or 8 constant");
+		expect(tcc_state, "1, 2, 4 or 8 constant");
 		shift = 0;
 		break;
 	}
@@ -271,20 +271,20 @@ static inline int get_reg_shift(TCCState *s1)
 static int asm_parse_reg(TCCState *tcc_state)
 {
 	int reg = 0;
-	if (tok != '%')
+	if (tcc_state->tok != '%')
 		goto error_32;
 	next(tcc_state);
-	if (tok >= TOK_ASM_eax && tok <= TOK_ASM_edi) {
-		reg = tok - TOK_ASM_eax;
+	if (tcc_state->tok >= TOK_ASM_eax && tcc_state->tok <= TOK_ASM_edi) {
+		reg = tcc_state->tok - TOK_ASM_eax;
 #ifdef TCC_TARGET_X86_64
 	}
-	else if (tok >= TOK_ASM_rax && tok <= TOK_ASM_rdi) {
-		reg = tok - TOK_ASM_rax;
+	else if (tcc_state->tok >= TOK_ASM_rax && tcc_state->tok <= TOK_ASM_rdi) {
+		reg = tcc_state->tok - TOK_ASM_rax;
 #endif
 #ifdef I386_ASM_16
 	}
-	else if (tok >= TOK_ASM_ax && tok <= TOK_ASM_di) {
-		reg = tok - TOK_ASM_ax;
+	else if (tcc_state->tok >= TOK_ASM_ax && tcc_state->tok <= TOK_ASM_di) {
+		reg = tcc_state->tok - TOK_ASM_ax;
 #endif
 	}
 	else {
@@ -295,22 +295,22 @@ static int asm_parse_reg(TCCState *tcc_state)
 	return reg;
 }
 
-static void parse_operand(TCCState *s1, Operand *op)
+static void parse_operand(TCCState *tcc_state, Operand *op)
 {
 	ExprValue e;
 	int reg, indir;
 	const char *p;
 
 	indir = 0;
-	if (tok == '*') {
-		next(s1);
+	if (tcc_state->tok == '*') {
+		next(tcc_state);
 		indir = OP_INDIR;
 	}
 
-	if (tok == '%') {
-		next(s1);
-		if (tok >= TOK_ASM_al && tok <= TOK_ASM_db7) {
-			reg = tok - TOK_ASM_al;
+	if (tcc_state->tok == '%') {
+		next(tcc_state);
+		if (tcc_state->tok >= TOK_ASM_al && tcc_state->tok <= TOK_ASM_db7) {
+			reg = tcc_state->tok - TOK_ASM_al;
 			op->type = 1 << (reg >> 3); /* WARNING: do not change constant order */
 			op->reg = reg & 7;
 			if ((op->type & OP_REG) && op->reg == TREG_XAX)
@@ -320,29 +320,29 @@ static void parse_operand(TCCState *s1, Operand *op)
 			else if (op->type == OP_REG16 && op->reg == TREG_XDX)
 				op->type |= OP_DX;
 		}
-		else if (tok >= TOK_ASM_dr0 && tok <= TOK_ASM_dr7) {
+		else if (tcc_state->tok >= TOK_ASM_dr0 && tcc_state->tok <= TOK_ASM_dr7) {
 			op->type = OP_DB;
-			op->reg = tok - TOK_ASM_dr0;
+			op->reg = tcc_state->tok - TOK_ASM_dr0;
 		}
-		else if (tok >= TOK_ASM_es && tok <= TOK_ASM_gs) {
+		else if (tcc_state->tok >= TOK_ASM_es && tcc_state->tok <= TOK_ASM_gs) {
 			op->type = OP_SEG;
-			op->reg = tok - TOK_ASM_es;
+			op->reg = tcc_state->tok - TOK_ASM_es;
 		}
-		else if (tok == TOK_ASM_st) {
+		else if (tcc_state->tok == TOK_ASM_st) {
 			op->type = OP_ST;
 			op->reg = 0;
-			next(s1);
-			if (tok == '(') {
-				next(s1);
-				if (tok != TOK_PPNUM)
+			next(tcc_state);
+			if (tcc_state->tok == '(') {
+				next(tcc_state);
+				if (tcc_state->tok != TOK_PPNUM)
 					goto reg_error;
-				p = tokc.cstr->data;
+				p = tcc_state->tokc.cstr->data;
 				reg = p[0] - '0';
 				if ((unsigned)reg >= 8 || p[1] != '\0')
 					goto reg_error;
 				op->reg = reg;
-				next(s1);
-				skip(s1, ')');
+				next(tcc_state);
+				skip(tcc_state, ')');
 			}
 			if (op->reg == 0)
 				op->type |= OP_ST0;
@@ -350,15 +350,15 @@ static void parse_operand(TCCState *s1, Operand *op)
 		}
 		else {
 		reg_error:
-			tcc_error(s1, "unknown register");
+			tcc_error(tcc_state, "unknown register");
 		}
-		next(s1);
+		next(tcc_state);
 	no_skip:;
 	}
-	else if (tok == '$') {
+	else if (tcc_state->tok == '$') {
 		/* constant value */
-		next(s1);
-		asm_expr(s1, &e);
+		next(tcc_state);
+		asm_expr(tcc_state, &e);
 		op->type = OP_IM;
 		op->e.v = e.v;
 		op->e.sym = e.sym;
@@ -381,44 +381,44 @@ static void parse_operand(TCCState *s1, Operand *op)
 		op->reg = -1;
 		op->reg2 = -1;
 		op->shift = 0;
-		if (tok != '(') {
-			asm_expr(s1, &e);
+		if (tcc_state->tok != '(') {
+			asm_expr(tcc_state, &e);
 			op->e.v = e.v;
 			op->e.sym = e.sym;
 		}
 		else {
-			next(s1);
-			if (tok == '%') {
-				unget_tok(s1, '(');
+			next(tcc_state);
+			if (tcc_state->tok == '%') {
+				unget_tok(tcc_state, '(');
 				op->e.v = 0;
 				op->e.sym = NULL;
 			}
 			else {
 				/* bracketed offset expression */
-				asm_expr(s1, &e);
-				if (tok != ')')
-					expect(s1, ")");
-				next(s1);
+				asm_expr(tcc_state, &e);
+				if (tcc_state->tok != ')')
+					expect(tcc_state, ")");
+				next(tcc_state);
 				op->e.v = e.v;
 				op->e.sym = e.sym;
 			}
 		}
-		if (tok == '(') {
-			next(s1);
-			if (tok != ',') {
-				op->reg = asm_parse_reg(s1);
+		if (tcc_state->tok == '(') {
+			next(tcc_state);
+			if (tcc_state->tok != ',') {
+				op->reg = asm_parse_reg(tcc_state);
 			}
-			if (tok == ',') {
-				next(s1);
-				if (tok != ',') {
-					op->reg2 = asm_parse_reg(s1);
+			if (tcc_state->tok == ',') {
+				next(tcc_state);
+				if (tcc_state->tok != ',') {
+					op->reg2 = asm_parse_reg(tcc_state);
 				}
-				if (tok == ',') {
-					next(s1);
-					op->shift = get_reg_shift(s1);
+				if (tcc_state->tok == ',') {
+					next(tcc_state);
+					op->shift = get_reg_shift(tcc_state);
 				}
 			}
-			skip(s1, ')');
+			skip(tcc_state, ')');
 		}
 		if (op->reg == -1 && op->reg2 == -1)
 			op->type |= OP_ADDR;
@@ -606,7 +606,7 @@ static inline void asm_modrm(TCCState *tcc_state, int reg, Operand *op)
 	}
 }
 
-ST_FUNC void asm_opcode(TCCState *s1, int opcode)
+ST_FUNC void asm_opcode(TCCState *tcc_state, int opcode)
 {
 	const ASMInstr *pa;
 	int i, modrm_index, reg, v, op1, is_short_jmp, seg_prefix;
@@ -620,36 +620,36 @@ ST_FUNC void asm_opcode(TCCState *s1, int opcode)
 	/* force synthetic ';' after prefix instruction, so we can handle */
 	/* one-line things like "rep stosb" instead of only "rep\nstosb" */
 	if (opcode >= TOK_ASM_wait && opcode <= TOK_ASM_repnz)
-		unget_tok(s1, ';');
+		unget_tok(tcc_state, ';');
 
 	/* get operands */
 	pop = ops;
 	nb_ops = 0;
 	seg_prefix = 0;
 	for (;;) {
-		if (tok == ';' || tok == TOK_LINEFEED)
+		if (tcc_state->tok == ';' || tcc_state->tok == TOK_LINEFEED)
 			break;
 		if (nb_ops >= MAX_OPERANDS) {
-			tcc_error(s1, "incorrect number of operands");
+			tcc_error(tcc_state, "incorrect number of operands");
 		}
-		parse_operand(s1, pop);
-		if (tok == ':') {
+		parse_operand(tcc_state, pop);
+		if (tcc_state->tok == ':') {
 			if (pop->type != OP_SEG || seg_prefix)
-				tcc_error(s1, "incorrect prefix");
+				tcc_error(tcc_state, "incorrect prefix");
 			seg_prefix = segment_prefixes[pop->reg];
-			next(s1);
-			parse_operand(s1, pop);
+			next(tcc_state);
+			parse_operand(tcc_state, pop);
 #ifndef I386_ASM_16
 			if (!(pop->type & OP_EA)) {
-				tcc_error(s1, "segment prefix must be followed by memory reference");
+				tcc_error(tcc_state, "segment prefix must be followed by memory reference");
 			}
 #endif
 		}
 		pop++;
 		nb_ops++;
-		if (tok != ',')
+		if (tcc_state->tok != ',')
 			break;
-		next(s1);
+		next(tcc_state);
 	}
 
 	is_short_jmp = 0;
@@ -737,30 +737,30 @@ ST_FUNC void asm_opcode(TCCState *s1, int opcode)
 			b = op0_codes[opcode - TOK_ASM_first];
 #ifdef I386_ASM_16
 			if (opcode == TOK_ASM_o32) {
-				if (s1->seg_size == 32)
-					tcc_error(s1, "incorrect prefix");
+				if (tcc_state->seg_size == 32)
+					tcc_error(tcc_state, "incorrect prefix");
 				else
 					o32 = data32 = 1;
 			}
 			else if (opcode == TOK_ASM_a32) {
-				if (s1->seg_size == 32)
-					tcc_error(s1, "incorrect prefix");
+				if (tcc_state->seg_size == 32)
+					tcc_error(tcc_state, "incorrect prefix");
 				else
 					a32 = addr32 = 1;
 			}
 #endif
 			if (b & 0xff00)
-				g(s1, b >> 8);
-			g(s1, b);
+				g(tcc_state, b >> 8);
+			g(tcc_state, b);
 			return;
 		}
 		else if (opcode <= TOK_ASM_alllast) {
-			tcc_error(s1, "bad operand with opcode '%s'",
-				get_tok_str(s1, opcode, NULL));
+			tcc_error(tcc_state, "bad operand with opcode '%s'",
+				get_tok_str(tcc_state, opcode, NULL));
 		}
 		else {
-			tcc_error(s1, "unknown opcode '%s'",
-				get_tok_str(s1, opcode, NULL));
+			tcc_error(tcc_state, "unknown opcode '%s'",
+				get_tok_str(tcc_state, opcode, NULL));
 		}
 	}
 	/* if the size is unknown, then evaluate it (OPC_B or OPC_WL case) */
@@ -774,29 +774,29 @@ ST_FUNC void asm_opcode(TCCState *s1, int opcode)
 				(ops[0].type & (OP_SEG | OP_IM8S | OP_IM32 | OP_IM64)))
 				s = 2;
 			else
-				tcc_error(s1, "cannot infer opcode suffix");
+				tcc_error(tcc_state, "cannot infer opcode suffix");
 		}
 	}
 
 #ifdef I386_ASM_16
 	for (i = 0; i < nb_ops; i++) {
 		if (ops[i].type & OP_REG32) {
-			if (s1->seg_size == 16)
+			if (tcc_state->seg_size == 16)
 				o32 = 1;
 		}
 		else if (!(ops[i].type & OP_REG32)) {
-			if (s1->seg_size == 32)
+			if (tcc_state->seg_size == 32)
 				o32 = 1;
 		}
 	}
 
 
 	if (s == 1 || (pa->instr_type & OPC_D16)) {
-		if (s1->seg_size == 32)
+		if (tcc_state->seg_size == 32)
 			o32 = 1;
 	}
 	else if (s == 2) {
-		if (s1->seg_size == 16) {
+		if (tcc_state->seg_size == 16) {
 			if (!(pa->instr_type & OPC_D16))
 				o32 = 1;
 		}
@@ -804,31 +804,31 @@ ST_FUNC void asm_opcode(TCCState *s1, int opcode)
 
 	/* generate a16/a32 prefix if needed */
 	if ((a32 == 1) && (addr32 == 0))
-		g(s1, 0x67);
+		g(tcc_state, 0x67);
 	/* generate o16/o32 prefix if needed */
 	if ((o32 == 1) && (data32 == 0))
-		g(s1, 0x66);
+		g(tcc_state, 0x66);
 
 	addr32 = data32 = 0;
 #else
 	/* generate data16 prefix if needed */
 	if (s == 1 || (pa->instr_type & OPC_D16))
-		g(s1, 0x66);
+		g(tcc_state, 0x66);
 #ifdef TCC_TARGET_X86_64
 	else if (s == 3) {
 		/* generate REX prefix */
 		if ((opcode != TOK_ASM_push && opcode != TOK_ASM_pop)
 			|| !(ops[0].type & OP_REG64))
-			g(s1, 0x48);
+			g(tcc_state, 0x48);
 	}
 #endif
 #endif
 
 	/* now generates the operation */
 	if (pa->instr_type & OPC_FWAIT)
-		g(s1, 0x9b);
+		g(tcc_state, 0x9b);
 	if (seg_prefix)
-		g(s1, seg_prefix);
+		g(tcc_state, seg_prefix);
 
 	v = pa->opcode;
 	if ((v == 0x69 || v == 0x6b) && nb_ops == 2) {
@@ -901,14 +901,14 @@ ST_FUNC void asm_opcode(TCCState *s1, int opcode)
 					v += 0x0f10;
 			}
 			else {
-				tcc_error(s1, "invalid displacement");
+				tcc_error(tcc_state, "invalid displacement");
 			}
 		}
 	}
 	op1 = v >> 8;
 	if (op1)
-		g(s1, op1);
-	g(s1, v);
+		g(tcc_state, op1);
+	g(tcc_state, v);
 
 	/* search which operand will used for modrm */
 	modrm_index = 0;
@@ -938,7 +938,7 @@ ST_FUNC void asm_opcode(TCCState *s1, int opcode)
 				goto modrm_found;
 		}
 #ifdef ASM_DEBUG
-		tcc_error(s1, "bad op table");
+		tcc_error(tcc_state, "bad op table");
 #endif
 	modrm_found:
 		modrm_index = i;
@@ -953,7 +953,7 @@ ST_FUNC void asm_opcode(TCCState *s1, int opcode)
 			}
 		}
 
-		asm_modrm(s1, reg, &ops[modrm_index]);
+		asm_modrm(tcc_state, reg, &ops[modrm_index]);
 	}
 
 	/* emit constants */
@@ -961,14 +961,14 @@ ST_FUNC void asm_opcode(TCCState *s1, int opcode)
 	if (pa->opcode == 0x9a || pa->opcode == 0xea) {
 		/* ljmp or lcall kludge */
 #ifdef I386_ASM_16
-		if (s1->seg_size == 16 && o32 == 0)
-			gen_expr16(s1, &ops[1].e);
+		if (tcc_state->seg_size == 16 && o32 == 0)
+			gen_expr16(tcc_state, &ops[1].e);
 		else
 #endif
-			gen_expr32(s1, &ops[1].e);
+			gen_expr32(tcc_state, &ops[1].e);
 		if (ops[0].e.sym)
-			tcc_error(s1, "cannot relocate");
-		gen_le16(s1, ops[0].e.v);
+			tcc_error(tcc_state, "cannot relocate");
+		gen_le16(tcc_state, ops[0].e.v);
 		return;
 	}
 #endif
@@ -990,43 +990,43 @@ ST_FUNC void asm_opcode(TCCState *s1, int opcode)
 			if (v & (OP_IM8 | OP_IM8S)) {
 				if (ops[i].e.sym)
 					goto error_relocate;
-				g(s1, ops[i].e.v);
+				g(tcc_state, ops[i].e.v);
 			}
 			else if (v & OP_IM16) {
 #ifdef I386_ASM_16
-				if (s1->seg_size == 16)
-					gen_expr16(s1, &ops[i].e);
+				if (tcc_state->seg_size == 16)
+					gen_expr16(tcc_state, &ops[i].e);
 				else
 #endif
 					if (ops[i].e.sym)
 					error_relocate:
-				tcc_error(s1, "cannot relocate");
+				tcc_error(tcc_state, "cannot relocate");
 					else
-						gen_le16(s1, ops[i].e.v);
+						gen_le16(tcc_state, ops[i].e.v);
 			}
 			else {
 				if (pa->instr_type & (OPC_JMP | OPC_SHORTJMP)) {
 					if (is_short_jmp)
-						g(s1, ops[i].e.v);
+						g(tcc_state, ops[i].e.v);
 #ifdef I386_ASM_16
-					else if (s1->seg_size == 16)
-						gen_disp16(s1, &ops[i].e);
+					else if (tcc_state->seg_size == 16)
+						gen_disp16(tcc_state, &ops[i].e);
 #endif
 					else
-						gen_disp32(s1, &ops[i].e);
+						gen_disp32(tcc_state, &ops[i].e);
 				}
 				else {
 #ifdef I386_ASM_16
-					if (s1->seg_size == 16 && !((o32 == 1) && (v & OP_IM32)))
-						gen_expr16(s1, &ops[i].e);
+					if (tcc_state->seg_size == 16 && !((o32 == 1) && (v & OP_IM32)))
+						gen_expr16(tcc_state, &ops[i].e);
 					else
 #endif
 #ifdef TCC_TARGET_X86_64
 						if (v & OP_IM64)
-							gen_expr64(s1, &ops[i].e);
+							gen_expr64(tcc_state, &ops[i].e);
 						else
 #endif
-							gen_expr32(s1, &ops[i].e);
+							gen_expr32(tcc_state, &ops[i].e);
 				}
 			}
 #ifdef I386_ASM_16
@@ -1034,7 +1034,7 @@ ST_FUNC void asm_opcode(TCCState *s1, int opcode)
 		else if (v & (OP_REG16 | OP_REG32)) {
 			if (pa->instr_type & (OPC_JMP | OPC_SHORTJMP)) {
 				/* jmp $r */
-				g(s1, 0xE0 + ops[i].reg);
+				g(tcc_state, 0xE0 + ops[i].reg);
 			}
 #endif
 #ifdef TCC_TARGET_X86_64
@@ -1042,7 +1042,7 @@ ST_FUNC void asm_opcode(TCCState *s1, int opcode)
 		else if (v & (OP_REG32 | OP_REG64)) {
 			if (pa->instr_type & (OPC_JMP | OPC_SHORTJMP)) {
 				/* jmp $r */
-				g(s1, 0xE0 + ops[i].reg);
+				g(tcc_state, 0xE0 + ops[i].reg);
 			}
 #endif
 		}
