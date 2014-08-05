@@ -443,12 +443,12 @@ static void gen_expr64(TCCState *tcc_state, ExprValue *pe)
 static void gen_disp32(TCCState *tcc_state, ExprValue *pe)
 {
 	Sym *sym = pe->sym;
-	if (sym && sym->r == cur_text_section->sh_num) {
+	if (sym && sym->r == tcc_state->cur_text_section->sh_num) {
 		/* same section: we can output an absolute value. Note
 		that the TCC compiler behaves differently here because
 		it always outputs a relocation to ease (future) code
 		elimination in the linker */
-		gen_le32(tcc_state, pe->v + sym->jnext - ind - 4);
+		gen_le32(tcc_state, pe->v + sym->jnext - tcc_state->ind - 4);
 	}
 	else {
 		if (sym && sym->type.t == VT_VOID) {
@@ -463,7 +463,7 @@ static void gen_disp32(TCCState *tcc_state, ExprValue *pe)
 static void gen_expr16(TCCState *tcc_state, ExprValue *pe)
 {
 	if (pe->sym)
-		greloc(tcc_state, cur_text_section, pe->sym, ind, R_386_16);
+		greloc(tcc_state, tcc_state->cur_text_section, pe->sym, ind, R_386_16);
 	gen_le16(pe->v);
 }
 static void gen_disp16(TCCState *tcc_state, ExprValue *pe)
@@ -471,7 +471,7 @@ static void gen_disp16(TCCState *tcc_state, ExprValue *pe)
 	Sym *sym;
 	sym = pe->sym;
 	if (sym) {
-		if (sym->r == cur_text_section->sh_num) {
+		if (sym->r == tcc_state->cur_text_section->sh_num) {
 			/* same section: we can output an absolute value. Note
 			that the TCC compiler behaves differently here because
 			it always outputs a relocation to ease (future) code
@@ -479,13 +479,13 @@ static void gen_disp16(TCCState *tcc_state, ExprValue *pe)
 			gen_le16(pe->v + sym->jnext - ind - 2);
 		}
 		else {
-			greloc(tcc_state, cur_text_section, sym, ind, R_386_PC16);
+			greloc(tcc_state, tcc_state->cur_text_section, sym, ind, R_386_PC16);
 			gen_le16(pe->v - 2);
 		}
 	}
 	else {
 		/* put an empty PC32 relocation */
-		put_elf_reloc(tcc_state, symtab_section, cur_text_section,
+		put_elf_reloc(tcc_state, tcc_state->symtab_section, tcc_state->cur_text_section,
 			ind, R_386_PC16, 0);
 		gen_le16(pe->v - 2);
 	}
@@ -882,9 +882,9 @@ ST_FUNC void asm_opcode(TCCState *tcc_state, int opcode)
 		sym = ops[0].e.sym;
 		if (!sym)
 			goto no_short_jump;
-		if (sym->r != cur_text_section->sh_num)
+		if (sym->r != tcc_state->cur_text_section->sh_num)
 			goto no_short_jump;
-		jmp_disp = ops[0].e.v + sym->jnext - ind - 2;
+		jmp_disp = ops[0].e.v + sym->jnext - tcc_state->ind - 2;
 		if (jmp_disp == (int8_t)jmp_disp) {
 			/* OK to generate jump */
 			is_short_jmp = 1;

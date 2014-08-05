@@ -298,7 +298,7 @@ static void asm_new_label1(TCCState *tcc_state, int label, int is_local,
 
 static void asm_new_label(TCCState *tcc_state, int label, int is_local)
 {
-	asm_new_label1(tcc_state, label, is_local, cur_text_section->sh_num, ind);
+	asm_new_label1(tcc_state, label, is_local, tcc_state->cur_text_section->sh_num, tcc_state->ind);
 }
 
 static void asm_free_labels(TCCState *tcc_state)
@@ -325,9 +325,9 @@ static void asm_free_labels(TCCState *tcc_state)
 
 static void use_section1(TCCState *tcc_state, Section *sec)
 {
-	cur_text_section->data_offset = ind;
-	cur_text_section = sec;
-	ind = cur_text_section->data_offset;
+	tcc_state->cur_text_section->data_offset = tcc_state->ind;
+	tcc_state->cur_text_section = sec;
+	tcc_state->ind = tcc_state->cur_text_section->data_offset;
 }
 
 static void use_section(TCCState *tcc_state, const char *name)
@@ -345,7 +345,7 @@ static void asm_parse_directive(TCCState *tcc_state)
 
 	/* assembler directive */
 	next(tcc_state);
-	sec = cur_text_section;
+	sec = tcc_state->cur_text_section;
 	switch (tcc_state->tok) {
 	case TOK_ASM_align:
 	case TOK_ASM_skip:
@@ -356,8 +356,8 @@ static void asm_parse_directive(TCCState *tcc_state)
 		if (tok1 == TOK_ASM_align) {
 			if (n < 0 || (n & (n - 1)) != 0)
 				tcc_error(tcc_state, "alignment must be a positive power of two");
-			offset = (ind + n - 1) & -n;
-			size = offset - ind;
+			offset = (tcc_state->ind + n - 1) & -n;
+			size = offset - tcc_state->ind;
 			/* the section must have a compatible alignment */
 			if (sec->sh_addralign < n)
 				sec->sh_addralign = n;
@@ -372,11 +372,11 @@ static void asm_parse_directive(TCCState *tcc_state)
 		}
 	zero_pad:
 		if (sec->sh_type != SHT_NOBITS) {
-			sec->data_offset = ind;
+			sec->data_offset = tcc_state->ind;
 			ptr = section_ptr_add(tcc_state, sec, size);
 			memset(ptr, v, size);
 		}
-		ind += size;
+		tcc_state->ind += size;
 		break;
 	case TOK_ASM_quad:
 		next(tcc_state);
@@ -399,7 +399,7 @@ static void asm_parse_directive(TCCState *tcc_state)
 				gen_le32(tcc_state, vl >> 32);
 			}
 			else {
-				ind += 8;
+				tcc_state->ind += 8;
 			}
 			if (tcc_state->tok != ',')
 				break;
@@ -435,7 +435,7 @@ static void asm_parse_directive(TCCState *tcc_state)
 				}
 			}
 			else {
-				ind += size;
+				tcc_state->ind += size;
 			}
 			if (tcc_state->tok != ',')
 				break;
@@ -490,10 +490,10 @@ static void asm_parse_directive(TCCState *tcc_state)
 		next(tcc_state);
 		/* XXX: handle section symbols too */
 		n = asm_int_expr(tcc_state);
-		if (n < ind)
+		if (n < tcc_state->ind)
 			tcc_error(tcc_state, "attempt to .org backwards");
 		v = 0;
-		size = n - ind;
+		size = n - tcc_state->ind;
 		goto zero_pad;
 	}
 		break;
@@ -675,7 +675,7 @@ static void asm_parse_directive(TCCState *tcc_state)
 				expect(tcc_state, "string constant");
 			next(tcc_state);
 		}
-		last_text_section = cur_text_section;
+		tcc_state->last_text_section = tcc_state->cur_text_section;
 		use_section(tcc_state, sname);
 	}
 		break;
@@ -683,11 +683,11 @@ static void asm_parse_directive(TCCState *tcc_state)
 	{
 		Section *sec;
 		next(tcc_state);
-		if (!last_text_section)
+		if (!tcc_state->last_text_section)
 			tcc_error(tcc_state, "no previous section referenced");
-		sec = cur_text_section;
-		use_section1(tcc_state, last_text_section);
-		last_text_section = sec;
+		sec = tcc_state->cur_text_section;
+		use_section1(tcc_state, tcc_state->last_text_section);
+		tcc_state->last_text_section = sec;
 	}
 		break;
 #ifdef TCC_TARGET_I386
@@ -831,20 +831,20 @@ ST_FUNC int tcc_assemble(TCCState *tcc_state, int do_preprocess)
 	preprocess_init(tcc_state);
 
 	/* default section is text */
-	cur_text_section = text_section;
-	ind = cur_text_section->data_offset;
+	tcc_state->cur_text_section = tcc_state->text_section;
+	tcc_state->ind = tcc_state->cur_text_section->data_offset;
 
-	define_start = define_stack;
+	define_start = tcc_state->define_stack;
 
 	/* an elf symbol of type STT_FILE must be put so that STB_LOCAL
 	symbols can be safely used */
-	put_elf_sym(tcc_state, symtab_section, 0, 0,
+	put_elf_sym(tcc_state, tcc_state->symtab_section, 0, 0,
 		ELFW(ST_INFO)(STB_LOCAL, STT_FILE), 0,
 		SHN_ABS, tcc_state->file->filename);
 
 	ret = tcc_assemble_internal(tcc_state, do_preprocess);
 
-	cur_text_section->data_offset = ind;
+	tcc_state->cur_text_section->data_offset = tcc_state->ind;
 
 	free_defines(tcc_state, define_start);
 
@@ -1000,14 +1000,14 @@ static void parse_asm_operands(TCCState* tcc_state, ASMOperand *operands, int *n
 				constraint is used. Note that it may come from
 				register storage, so we need to convert (reg)
 				case */
-				if ((vtop->r & VT_LVAL) &&
-					((vtop->r & VT_VALMASK) == VT_LLOCAL ||
-					(vtop->r & VT_VALMASK) < VT_CONST) &&
+				if ((tcc_state->vtop->r & VT_LVAL) &&
+					((tcc_state->vtop->r & VT_VALMASK) == VT_LLOCAL ||
+					(tcc_state->vtop->r & VT_VALMASK) < VT_CONST) &&
 					!strchr(op->constraint, 'm')) {
 					gv(tcc_state, RC_INT);
 				}
 			}
-			op->vt = vtop;
+			op->vt = tcc_state->vtop;
 			skip(tcc_state, ')');
 			if (tcc_state->tok == ',') {
 				next(tcc_state);
@@ -1138,13 +1138,13 @@ ST_FUNC void asm_global_instr(TCCState *tcc_state)
 #ifdef ASM_DEBUG
 	printf("asm_global: \"%s\"\n", (char *)astr.data);
 #endif
-	cur_text_section = text_section;
-	ind = cur_text_section->data_offset;
+	tcc_state->cur_text_section = tcc_state->text_section;
+	tcc_state->ind = tcc_state->cur_text_section->data_offset;
 
 	/* assemble the string with tcc internal assembler */
 	tcc_assemble_inline(tcc_state, astr.data, astr.size - 1);
 
-	cur_text_section->data_offset = ind;
+	tcc_state->cur_text_section->data_offset = tcc_state->ind;
 
 	/* restore the current C token */
 	next(tcc_state);

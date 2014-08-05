@@ -200,14 +200,14 @@ void C67_g(TCCState *tcc_state, int c)
 #ifdef ASSEMBLY_LISTING_C67
 	fprintf(f, " %08X", c);
 #endif
-	ind1 = ind + 4;
-	if (ind1 > (int)cur_text_section->data_allocated)
-		section_realloc(tcc_state, cur_text_section, ind1);
-	cur_text_section->data[ind] = c & 0xff;
-	cur_text_section->data[ind + 1] = (c >> 8) & 0xff;
-	cur_text_section->data[ind + 2] = (c >> 16) & 0xff;
-	cur_text_section->data[ind + 3] = (c >> 24) & 0xff;
-	ind = ind1;
+	ind1 = tcc_state->ind + 4;
+	if (ind1 > (int)tcc_state->cur_text_section->data_allocated)
+		section_realloc(tcc_state, tcc_state->cur_text_section, ind1);
+	tcc_state->cur_text_section->data[tcc_state->ind] = c & 0xff;
+	tcc_state->cur_text_section->data[tcc_state->ind + 1] = (c >> 8) & 0xff;
+	tcc_state->cur_text_section->data[tcc_state->ind + 2] = (c >> 16) & 0xff;
+	tcc_state->cur_text_section->data[tcc_state->ind + 3] = (c >> 24) & 0xff;
+	tcc_state->ind = ind1;
 }
 
 
@@ -216,7 +216,7 @@ void gsym_addr(TCCState *tcc_state, int t, int a)
 {
 	int n, *ptr;
 	while (t) {
-		ptr = (int *)(cur_text_section->data + t);
+		ptr = (int *)(tcc_state->cur_text_section->data + t);
 		{
 			Sym *sym;
 
@@ -226,9 +226,9 @@ void gsym_addr(TCCState *tcc_state, int t, int a)
 
 			// define a label that will be relocated
 
-			sym = get_sym_ref(tcc_state, &char_pointer_type, cur_text_section, a, 0);
-			greloc(tcc_state, cur_text_section, sym, t, R_C60LO16);
-			greloc(tcc_state, cur_text_section, sym, t + 4, R_C60HI16);
+			sym = get_sym_ref(tcc_state, &tcc_state->char_pointer_type, tcc_state->cur_text_section, a, 0);
+			greloc(tcc_state, tcc_state->cur_text_section, sym, t, R_C60LO16);
+			greloc(tcc_state, tcc_state->cur_text_section, sym, t + 4, R_C60HI16);
 
 			// clear out where the pointer was
 
@@ -241,7 +241,7 @@ void gsym_addr(TCCState *tcc_state, int t, int a)
 
 void gsym(TCCState *tcc_state, int t)
 {
-	gsym_addr(tcc_state, t, ind);
+	gsym_addr(tcc_state, t, tcc_state->ind);
 }
 
 // these are regs that tcc doesn't really know about, 
@@ -1539,7 +1539,7 @@ void C67_B_DISP(TCCState *tcc_state, int disp)	//  B  +2  Branch with constant d
 	// so add in how many words into the fetch packet the branch is
 
 
-	C67_asm(tcc_state, "B DISP", disp + ((ind & 31) >> 2), 0, 0);
+	C67_asm(tcc_state, "B DISP", disp + ((tcc_state->ind & 31) >> 2), 0, 0);
 }
 
 void C67_NOP(TCCState *tcc_state, int n)
@@ -1780,8 +1780,8 @@ void load(TCCState *tcc_state, int r, SValue * sv)
 			return;
 		}
 		else if (fr & VT_SYM) {
-			greloc(tcc_state, cur_text_section, sv->sym, ind, R_C60LO16);	// rem the inst need to be patched
-			greloc(tcc_state, cur_text_section, sv->sym, ind + 4, R_C60HI16);
+			greloc(tcc_state, tcc_state->cur_text_section, sv->sym, tcc_state->ind, R_C60LO16);	// rem the inst need to be patched
+			greloc(tcc_state, tcc_state->cur_text_section, sv->sym, tcc_state->ind + 4, R_C60HI16);
 
 
 			C67_MVKL(tcc_state, C67_A0, fc);	//r=reg to load,  constant
@@ -1844,8 +1844,8 @@ void load(TCCState *tcc_state, int r, SValue * sv)
 	else {
 		if (v == VT_CONST) {
 			if (fr & VT_SYM) {
-				greloc(tcc_state, cur_text_section, sv->sym, ind, R_C60LO16);	// rem the inst need to be patched
-				greloc(tcc_state, cur_text_section, sv->sym, ind + 4, R_C60HI16);
+				greloc(tcc_state, tcc_state->cur_text_section, sv->sym, tcc_state->ind, R_C60LO16);	// rem the inst need to be patched
+				greloc(tcc_state, tcc_state->cur_text_section, sv->sym, tcc_state->ind + 4, R_C60HI16);
 			}
 			C67_MVKL(tcc_state, r, fc);	//r=reg to load, constant
 			C67_MVKH(tcc_state, r, fc);	//r=reg to load, constant
@@ -1904,8 +1904,8 @@ void store(TCCState *tcc_state, int r, SValue * v)
 			/* constant memory reference */
 
 			if (v->r & VT_SYM) {
-				greloc(tcc_state, cur_text_section, v->sym, ind, R_C60LO16);	// rem the inst need to be patched
-				greloc(tcc_state, cur_text_section, v->sym, ind + 4, R_C60HI16);
+				greloc(tcc_state, tcc_state->cur_text_section, v->sym, tcc_state->ind, R_C60LO16);	// rem the inst need to be patched
+				greloc(tcc_state, tcc_state->cur_text_section, v->sym, tcc_state->ind + 4, R_C60HI16);
 			}
 			C67_MVKL(tcc_state, C67_A0, fc);	//r=reg to load,  constant
 			C67_MVKH(tcc_state, C67_A0, fc);	//r=reg to load,  constant
@@ -1988,15 +1988,15 @@ static void gcall_or_jmp(TCCState *tcc_state, int is_jmp)
 	int r;
 	Sym *sym;
 
-	if ((vtop->r & (VT_VALMASK | VT_LVAL)) == VT_CONST) {
+	if ((tcc_state->vtop->r & (VT_VALMASK | VT_LVAL)) == VT_CONST) {
 		/* constant case */
-		if (vtop->r & VT_SYM) {
+		if (tcc_state->vtop->r & VT_SYM) {
 			/* relocation case */
 
 			// get add into A0, then start the jump B3
 
-			greloc(tcc_state, cur_text_section, vtop->sym, ind, R_C60LO16);	// rem the inst need to be patched
-			greloc(tcc_state, cur_text_section, vtop->sym, ind + 4, R_C60HI16);
+			greloc(tcc_state, tcc_state->cur_text_section, tcc_state->vtop->sym, tcc_state->ind, R_C60LO16);	// rem the inst need to be patched
+			greloc(tcc_state, tcc_state->cur_text_section, tcc_state->vtop->sym, tcc_state->ind + 4, R_C60HI16);
 
 			C67_MVKL(tcc_state, C67_A0, 0);	//r=reg to load, constant
 			C67_MVKH(tcc_state, C67_A0, 0);	//r=reg to load, constant
@@ -2008,9 +2008,9 @@ static void gcall_or_jmp(TCCState *tcc_state, int is_jmp)
 			else {
 				// Call, must load return address into B3 during delay slots
 
-				sym = get_sym_ref(tcc_state, &char_pointer_type, cur_text_section, ind + 12, 0);	// symbol for return address
-				greloc(tcc_state, cur_text_section, sym, ind, R_C60LO16);	// rem the inst need to be patched
-				greloc(tcc_state, cur_text_section, sym, ind + 4, R_C60HI16);
+				sym = get_sym_ref(tcc_state, &tcc_state->char_pointer_type, tcc_state->cur_text_section, tcc_state->ind + 12, 0);	// symbol for return address
+				greloc(tcc_state, tcc_state->cur_text_section, sym, tcc_state->ind, R_C60LO16);	// rem the inst need to be patched
+				greloc(tcc_state, tcc_state->cur_text_section, sym, tcc_state->ind + 4, R_C60HI16);
 				C67_MVKL(tcc_state, C67_B3, 0);	//r=reg to load, constant
 				C67_MVKH(tcc_state, C67_B3, 0);	//r=reg to load, constant
 				C67_NOP(tcc_state, 3);	// put remaining NOPs
@@ -2032,9 +2032,9 @@ static void gcall_or_jmp(TCCState *tcc_state, int is_jmp)
 		else {
 			// Call, must load return address into B3 during delay slots
 
-			sym = get_sym_ref(tcc_state, &char_pointer_type, cur_text_section, ind + 12, 0);	// symbol for return address
-			greloc(tcc_state, cur_text_section, sym, ind, R_C60LO16);	// rem the inst need to be patched
-			greloc(tcc_state, cur_text_section, sym, ind + 4, R_C60HI16);
+			sym = get_sym_ref(tcc_state, &tcc_state->char_pointer_type, tcc_state->cur_text_section, tcc_state->ind + 12, 0);	// symbol for return address
+			greloc(tcc_state, tcc_state->cur_text_section, sym, tcc_state->ind, R_C60LO16);	// rem the inst need to be patched
+			greloc(tcc_state, tcc_state->cur_text_section, sym, tcc_state->ind + 4, R_C60HI16);
 			C67_MVKL(tcc_state, C67_B3, 0);	//r=reg to load, constant
 			C67_MVKH(tcc_state, C67_B3, 0);	//r=reg to load, constant
 			C67_NOP(tcc_state, 3);		// put remaining NOPs
@@ -2062,7 +2062,7 @@ void gfunc_call(TCCState *tcc_state, int nb_args)
 	}
 
 	for (i = 0; i < nb_args; i++) {
-		if ((vtop->type.t & VT_BTYPE) == VT_STRUCT) {
+		if ((tcc_state->vtop->type.t & VT_BTYPE) == VT_STRUCT) {
 			ALWAYS_ASSERT(tcc_state, FALSE);
 		}
 		else {
@@ -2070,13 +2070,13 @@ void gfunc_call(TCCState *tcc_state, int nb_args)
 			/* XXX: implicit cast ? */
 
 
-			if ((vtop->type.t & VT_BTYPE) == VT_LLONG) {
+			if ((tcc_state->vtop->type.t & VT_BTYPE) == VT_LLONG) {
 				tcc_error(tcc_state, "long long not supported");
 			}
-			else if ((vtop->type.t & VT_BTYPE) == VT_LDOUBLE) {
+			else if ((tcc_state->vtop->type.t & VT_BTYPE) == VT_LDOUBLE) {
 				tcc_error(tcc_state, "long double not supported");
 			}
-			else if ((vtop->type.t & VT_BTYPE) == VT_DOUBLE) {
+			else if ((tcc_state->vtop->type.t & VT_BTYPE) == VT_DOUBLE) {
 				size = 8;
 			}
 			else {
@@ -2097,7 +2097,7 @@ void gfunc_call(TCCState *tcc_state, int nb_args)
 			}
 			args_sizes[i] = size;
 		}
-		vtop--;
+		tcc_state->vtop--;
 	}
 	// POP all the params on the stack into registers for the
 	// immediate call (in reverse order)
@@ -2110,7 +2110,7 @@ void gfunc_call(TCCState *tcc_state, int nb_args)
 			C67_POP(tcc_state, TREG_C67_A4 + i * 2);
 	}
 	gcall_or_jmp(tcc_state, 0);
-	vtop--;
+	tcc_state->vtop--;
 }
 
 
@@ -2135,10 +2135,10 @@ void gfunc_prolog(TCCState *tcc_state, CType * func_type)
 	addr = 8;
 	/* if the function returns a structure, then add an
 	implicit pointer parameter */
-	func_vt = sym->type;
-	func_var = (sym->c == FUNC_ELLIPSIS);
-	if ((func_vt.t & VT_BTYPE) == VT_STRUCT) {
-		func_vc = addr;
+	tcc_state->func_vt = sym->type;
+	tcc_state->func_var = (sym->c == FUNC_ELLIPSIS);
+	if ((tcc_state->func_vt.t & VT_BTYPE) == VT_STRUCT) {
+		tcc_state->func_vc = addr;
 		addr += 4;
 	}
 
@@ -2176,11 +2176,11 @@ void gfunc_prolog(TCCState *tcc_state, CType * func_type)
 
 	// place all the args passed in regs onto the stack
 
-	loc = 0;
+	tcc_state->loc = 0;
 	for (i = 0; i < NoOfCurFuncArgs; i++) {
 
-		ParamLocOnStack[i] = loc;	// remember where the param is
-		loc += -8;
+		ParamLocOnStack[i] = tcc_state->loc;	// remember where the param is
+		tcc_state->loc += -8;
 
 		C67_PUSH(tcc_state, TREG_C67_A4 + i * 2);
 
@@ -2189,9 +2189,9 @@ void gfunc_prolog(TCCState *tcc_state, CType * func_type)
 		}
 	}
 
-	TotalBytesPushedOnStack = -loc;
+	TotalBytesPushedOnStack = -tcc_state->loc;
 
-	func_sub_sp_offset = ind;	// remember where we put the stack instruction 
+	func_sub_sp_offset = tcc_state->ind;	// remember where we put the stack instruction 
 	C67_ADDK(tcc_state, 0, C67_SP);	//  ADDK.L2 loc,SP  (just put zero temporarily)
 
 	C67_PUSH(tcc_state, C67_A0);
@@ -2202,14 +2202,14 @@ void gfunc_prolog(TCCState *tcc_state, CType * func_type)
 void gfunc_epilog(TCCState *tcc_state)
 {
 	{
-		int local = (-loc + 7) & -8;	// stack must stay aligned to 8 bytes for LDDW instr
+		int local = (-tcc_state->loc + 7) & -8;	// stack must stay aligned to 8 bytes for LDDW instr
 		C67_POP(tcc_state, C67_B3);
 		C67_NOP(tcc_state, 4);		// NOP wait for load
 		C67_IREG_B_REG(tcc_state, 0, C67_CREG_ZERO, C67_B3);	//  B.S2  B3
 		C67_POP(tcc_state, C67_FP);
 		C67_ADDK(tcc_state, local, C67_SP);	//  ADDK.L2 loc,SP  
 		C67_Adjust_ADDK(tcc_state, 
-			(int *)(cur_text_section->data +
+			(int *)(tcc_state->cur_text_section->data +
 			func_sub_sp_offset),
 			-local + TotalBytesPushedOnStack);
 		C67_NOP(tcc_state, 3);		// NOP 
@@ -2219,7 +2219,7 @@ void gfunc_epilog(TCCState *tcc_state)
 /* generate a jump to a label */
 int gjmp(TCCState *tcc_state, int t)
 {
-	int ind1 = ind;
+	int ind1 = tcc_state->ind;
 
 	C67_MVKL(tcc_state, C67_A0, t);	//r=reg to load,  constant
 	C67_MVKH(tcc_state, C67_A0, t);	//r=reg to load,  constant
@@ -2238,9 +2238,9 @@ void gjmp_addr(TCCState *tcc_state, int a)
 
 	// define a label that will be relocated
 
-	sym = get_sym_ref(tcc_state, &char_pointer_type, cur_text_section, a, 0);
-	greloc(tcc_state, cur_text_section, sym, ind, R_C60LO16);
-	greloc(tcc_state, cur_text_section, sym, ind + 4, R_C60HI16);
+	sym = get_sym_ref(tcc_state, &tcc_state->char_pointer_type, tcc_state->cur_text_section, a, 0);
+	greloc(tcc_state, tcc_state->cur_text_section, sym, tcc_state->ind, R_C60LO16);
+	greloc(tcc_state, tcc_state->cur_text_section, sym, tcc_state->ind + 4, R_C60HI16);
 
 	gjmp(tcc_state, 0);			// place a zero there later the symbol will be added to it
 }
@@ -2251,11 +2251,11 @@ int gtst(TCCState *tcc_state, int inv, int t)
 	int ind1, n;
 	int v, *p;
 
-	v = vtop->r & VT_VALMASK;
+	v = tcc_state->vtop->r & VT_VALMASK;
 	if (v == VT_CMP) {
 		/* fast case : can jump directly since flags are set */
 		// C67 uses B2 sort of as flags register
-		ind1 = ind;
+		ind1 = tcc_state->ind;
 		C67_MVKL(tcc_state, C67_A0, t);	//r=reg to load, constant
 		C67_MVKH(tcc_state, C67_A0, t);	//r=reg to load, constant
 
@@ -2275,7 +2275,7 @@ int gtst(TCCState *tcc_state, int inv, int t)
 		/* && or || optimization */
 		if ((v & 1) == inv) {
 			/* insert vtop->c jump list in t */
-			p = &vtop->c.i;
+			p = &tcc_state->vtop->c.i;
 
 			// I guess the idea is to traverse to the
 			// null at the end of the list and store t
@@ -2283,7 +2283,7 @@ int gtst(TCCState *tcc_state, int inv, int t)
 
 			n = *p;
 			while (n != 0) {
-				p = (int *)(cur_text_section->data + n);
+				p = (int *)(tcc_state->cur_text_section->data + n);
 
 				// extract 32 bit address from MVKH/MVKL
 				n = ((*p >> 7) & 0xffff);
@@ -2291,15 +2291,15 @@ int gtst(TCCState *tcc_state, int inv, int t)
 			}
 			*p |= (t & 0xffff) << 7;
 			*(p + 1) |= ((t >> 16) & 0xffff) << 7;
-			t = vtop->c.i;
+			t = tcc_state->vtop->c.i;
 
 		}
 		else {
 			t = gjmp(tcc_state, t);
-			gsym(tcc_state, vtop->c.i);
+			gsym(tcc_state, tcc_state->vtop->c.i);
 		}
 	}
-	vtop--;
+	tcc_state->vtop--;
 	return t;
 }
 
@@ -2325,8 +2325,8 @@ void gen_opi(TCCState *tcc_state, int op)
 		else
 			gv2(tcc_state, RC_INT, RC_INT);
 
-		r = vtop[-1].r;
-		fr = vtop[0].r;
+		r = tcc_state->vtop[-1].r;
+		fr = tcc_state->vtop[0].r;
 
 		C67_compare_reg = C67_B2;
 
@@ -2384,10 +2384,10 @@ void gen_opi(TCCState *tcc_state, int op)
 		else
 			ALWAYS_ASSERT(tcc_state, FALSE);
 
-		vtop--;
+		tcc_state->vtop--;
 		if (op >= TOK_ULT && op <= TOK_GT) {
-			vtop->r = VT_CMP;
-			vtop->c.i = op;
+			tcc_state->vtop->r = VT_CMP;
+			tcc_state->vtop->c.i = op;
 		}
 		break;
 	case '-':
@@ -2412,33 +2412,33 @@ void gen_opi(TCCState *tcc_state, int op)
 	case '*':
 	case TOK_UMULL:
 		gv2(tcc_state, RC_INT, RC_INT);
-		r = vtop[-1].r;
-		fr = vtop[0].r;
-		vtop--;
+		r = tcc_state->vtop[-1].r;
+		fr = tcc_state->vtop[0].r;
+		tcc_state->vtop--;
 		C67_MPYI(tcc_state, fr, r);	// 32 bit bultiply  fr,r,fr
 		C67_NOP(tcc_state, 8);		// NOP 8 for worst case
 		break;
 	case TOK_SHL:
 		gv2(tcc_state, RC_INT_BSIDE, RC_INT_BSIDE);	// shift amount must be on same side as dst
-		r = vtop[-1].r;
-		fr = vtop[0].r;
-		vtop--;
+		r = tcc_state->vtop[-1].r;
+		fr = tcc_state->vtop[0].r;
+		tcc_state->vtop--;
 		C67_SHL(tcc_state, fr, r);		// arithmetic/logical shift
 		break;
 
 	case TOK_SHR:
 		gv2(tcc_state, RC_INT_BSIDE, RC_INT_BSIDE);	// shift amount must be on same side as dst
-		r = vtop[-1].r;
-		fr = vtop[0].r;
-		vtop--;
+		r = tcc_state->vtop[-1].r;
+		fr = tcc_state->vtop[0].r;
+		tcc_state->vtop--;
 		C67_SHRU(tcc_state, fr, r);	// logical shift
 		break;
 
 	case TOK_SAR:
 		gv2(tcc_state, RC_INT_BSIDE, RC_INT_BSIDE);	// shift amount must be on same side as dst
-		r = vtop[-1].r;
-		fr = vtop[0].r;
-		vtop--;
+		r = tcc_state->vtop[-1].r;
+		fr = tcc_state->vtop[0].r;
+		tcc_state->vtop--;
 		C67_SHR(tcc_state, fr, r);		// arithmetic shift
 		break;
 
@@ -2447,12 +2447,12 @@ void gen_opi(TCCState *tcc_state, int op)
 	call_func:
 		vswap(tcc_state);
 		/* call generic idiv function */
-		vpush_global_sym(tcc_state, &func_old_type, t);
-		vrott(3);
+		vpush_global_sym(tcc_state, &tcc_state->func_old_type, t);
+		vrott(tcc_state, 3);
 		gfunc_call(tcc_state, 2);
 		vpushi(tcc_state, 0);
-		vtop->r = REG_IRET;
-		vtop->r2 = VT_CONST;
+		tcc_state->vtop->r = REG_IRET;
+		tcc_state->vtop->r2 = VT_CONST;
 		break;
 	case TOK_UDIV:
 	case TOK_PDIV:
@@ -2483,10 +2483,10 @@ void gen_opf(TCCState *tcc_state, int op)
 	else
 		gv2(tcc_state, RC_FLOAT, RC_FLOAT);	// make sure src2 is on b side
 
-	ft = vtop->type.t;
-	fc = vtop->c.ul;
-	r = vtop->r;
-	fr = vtop[-1].r;
+	ft = tcc_state->vtop->type.t;
+	fc = tcc_state->vtop->c.ul;
+	r = tcc_state->vtop->r;
+	fr = tcc_state->vtop[-1].r;
 
 
 	if ((ft & VT_BTYPE) == VT_LDOUBLE)
@@ -2494,8 +2494,8 @@ void gen_opf(TCCState *tcc_state, int op)
 
 	if (op >= TOK_ULT && op <= TOK_GT) {
 
-		r = vtop[-1].r;
-		fr = vtop[0].r;
+		r = tcc_state->vtop[-1].r;
+		fr = tcc_state->vtop[0].r;
 
 		C67_compare_reg = C67_B2;
 
@@ -2550,7 +2550,7 @@ void gen_opf(TCCState *tcc_state, int op)
 		else {
 			ALWAYS_ASSERT(tcc_state, FALSE);
 		}
-		vtop->r = VT_CMP;	// tell TCC that result is in "flags" actually B2
+		tcc_state->vtop->r = VT_CMP;	// tell TCC that result is in "flags" actually B2
 	}
 	else {
 		if (op == '+') {
@@ -2562,7 +2562,7 @@ void gen_opf(TCCState *tcc_state, int op)
 				C67_ADDSP(tcc_state, r, fr);	// ADD  fr,r,fr
 				C67_NOP(tcc_state, 3);
 			}
-			vtop--;
+			tcc_state->vtop--;
 		}
 		else if (op == '-') {
 			if ((ft & VT_BTYPE) == VT_DOUBLE) {
@@ -2573,7 +2573,7 @@ void gen_opf(TCCState *tcc_state, int op)
 				C67_SUBSP(tcc_state, r, fr);	// SUB  fr,r,fr
 				C67_NOP(tcc_state, 3);
 			}
-			vtop--;
+			tcc_state->vtop--;
 		}
 		else if (op == '*') {
 			if ((ft & VT_BTYPE) == VT_DOUBLE) {
@@ -2584,31 +2584,31 @@ void gen_opf(TCCState *tcc_state, int op)
 				C67_MPYSP(tcc_state, r, fr);	// MPY  fr,r,fr
 				C67_NOP(tcc_state, 3);
 			}
-			vtop--;
+			tcc_state->vtop--;
 		}
 		else if (op == '/') {
 			if ((ft & VT_BTYPE) == VT_DOUBLE) {
 				// must call intrinsic DP floating point divide
 				vswap(tcc_state);
 				/* call generic idiv function */
-				vpush_global_sym(tcc_state, &func_old_type, TOK__divd);
-				vrott(3);
+				vpush_global_sym(tcc_state, &tcc_state->func_old_type, TOK__divd);
+				vrott(tcc_state, 3);
 				gfunc_call(tcc_state, 2);
 				vpushi(tcc_state, 0);
-				vtop->r = REG_FRET;
-				vtop->r2 = REG_LRET;
+				tcc_state->vtop->r = REG_FRET;
+				tcc_state->vtop->r2 = REG_LRET;
 
 			}
 			else {
 				// must call intrinsic SP floating point divide
 				vswap(tcc_state);
 				/* call generic idiv function */
-				vpush_global_sym(tcc_state, &func_old_type, TOK__divf);
-				vrott(3);
+				vpush_global_sym(tcc_state, &tcc_state->func_old_type, TOK__divf);
+				vrott(tcc_state, 3);
 				gfunc_call(tcc_state, 2);
 				vpushi(tcc_state, 0);
-				vtop->r = REG_FRET;
-				vtop->r2 = VT_CONST;
+				tcc_state->vtop->r = REG_FRET;
+				tcc_state->vtop->r2 = VT_CONST;
 			}
 		}
 		else
@@ -2626,7 +2626,7 @@ void gen_cvt_itof(TCCState *tcc_state, int t)
 	int r;
 
 	gv(tcc_state, RC_INT);
-	r = vtop->r;
+	r = tcc_state->vtop->r;
 
 	if ((t & VT_BTYPE) == VT_DOUBLE) {
 		if (t & VT_UNSIGNED)
@@ -2635,7 +2635,7 @@ void gen_cvt_itof(TCCState *tcc_state, int t)
 			C67_INTDP(tcc_state, r, r);
 
 		C67_NOP(tcc_state, 4);
-		vtop->type.t = VT_DOUBLE;
+		tcc_state->vtop->type.t = VT_DOUBLE;
 	}
 	else {
 		if (t & VT_UNSIGNED)
@@ -2643,7 +2643,7 @@ void gen_cvt_itof(TCCState *tcc_state, int t)
 		else
 			C67_INTSP(tcc_state, r, r);
 		C67_NOP(tcc_state, 3);
-		vtop->type.t = VT_FLOAT;
+		tcc_state->vtop->type.t = VT_FLOAT;
 	}
 
 }
@@ -2655,12 +2655,12 @@ void gen_cvt_ftoi(TCCState *tcc_state, int t)
 	int r;
 
 	gv(tcc_state, RC_FLOAT);
-	r = vtop->r;
+	r = tcc_state->vtop->r;
 
 	if (t != VT_INT)
 		tcc_error(tcc_state, "long long not supported");
 	else {
-		if ((vtop->type.t & VT_BTYPE) == VT_DOUBLE) {
+		if ((tcc_state->vtop->type.t & VT_BTYPE) == VT_DOUBLE) {
 			C67_DPTRUNC(tcc_state, r, r);
 			C67_NOP(tcc_state, 3);
 		}
@@ -2669,7 +2669,7 @@ void gen_cvt_ftoi(TCCState *tcc_state, int t)
 			C67_NOP(tcc_state, 3);
 		}
 
-		vtop->type.t = VT_INT;
+		tcc_state->vtop->type.t = VT_INT;
 
 	}
 }
@@ -2679,27 +2679,27 @@ void gen_cvt_ftof(TCCState *tcc_state, int t)
 {
 	int r, r2;
 
-	if ((vtop->type.t & VT_BTYPE) == VT_DOUBLE &&
+	if ((tcc_state->vtop->type.t & VT_BTYPE) == VT_DOUBLE &&
 		(t & VT_BTYPE) == VT_FLOAT) {
 		// convert double to float
 
 		gv(tcc_state, RC_FLOAT);		// get it in a register pair
 
-		r = vtop->r;
+		r = tcc_state->vtop->r;
 
 		C67_DPSP(tcc_state, r, r);		// convert it to SP same register
 		C67_NOP(tcc_state, 3);
 
-		vtop->type.t = VT_FLOAT;
-		vtop->r2 = VT_CONST;	// set this as unused
+		tcc_state->vtop->type.t = VT_FLOAT;
+		tcc_state->vtop->r2 = VT_CONST;	// set this as unused
 	}
-	else if ((vtop->type.t & VT_BTYPE) == VT_FLOAT &&
+	else if ((tcc_state->vtop->type.t & VT_BTYPE) == VT_FLOAT &&
 		(t & VT_BTYPE) == VT_DOUBLE) {
 		// convert float to double
 
 		gv(tcc_state, RC_FLOAT);		// get it in a register
 
-		r = vtop->r;
+		r = tcc_state->vtop->r;
 
 		if (r == TREG_EAX) {	// make sure the paired reg is avail
 			r2 = get_reg(tcc_state, RC_ECX);
@@ -2715,8 +2715,8 @@ void gen_cvt_ftof(TCCState *tcc_state, int t)
 		C67_SPDP(tcc_state, r, r);		// convert it to DP same register
 		C67_NOP(tcc_state, 1);
 
-		vtop->type.t = VT_DOUBLE;
-		vtop->r2 = r2;		// set this as unused
+		tcc_state->vtop->type.t = VT_DOUBLE;
+		tcc_state->vtop->r2 = r2;		// set this as unused
 	}
 	else {
 		ALWAYS_ASSERT(tcc_state, FALSE);
@@ -2727,7 +2727,7 @@ void gen_cvt_ftof(TCCState *tcc_state, int t)
 void ggoto(TCCState *tcc_state)
 {
 	gcall_or_jmp(tcc_state, 1);
-	vtop--;
+	tcc_state->vtop--;
 }
 
 /* Save the stack pointer onto the stack and return the location of its address */

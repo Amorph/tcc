@@ -752,6 +752,49 @@ struct TCCState {
 	int total_bytes;
 	int tok_ident;
 	TokenSym **table_ident;
+
+	Section *text_section, *data_section, *bss_section; /* predefined sections */
+	Section *cur_text_section; /* current section where function code is generated */
+#ifdef CONFIG_TCC_ASM
+	Section *last_text_section; /* to handle .previous asm directive */
+#endif
+#ifdef CONFIG_TCC_BCHECK
+	/* bound check related sections */
+	Section *bounds_section; /* contains global data bound description */
+	Section *lbounds_section; /* contains local data bound description */
+#endif
+	/* symbol sections */
+	Section *symtab_section, *strtab_section;
+	/* debug sections */
+	Section *stab_section, *stabstr_section;
+
+	Sym *sym_free_first;
+	void **sym_pools;
+	int nb_sym_pools;
+
+	Sym *global_stack;
+	Sym *local_stack;
+	Sym *scope_stack_bottom;
+	Sym *local_label_stack;
+	Sym *global_label_stack;
+	Sym *define_stack;
+	CType char_pointer_type, func_old_type, int_type, size_type;
+	SValue __vstack[1 +/*to make bcheck happy*/ VSTACK_SIZE], *vtop;
+
+	/* loc : local variable index
+	ind : output code index
+	rsym: return symbol
+	anon_sym: anonymous symbol index*/
+	int rsym, anon_sym, ind, loc;
+
+	int const_wanted; /* true if constant wanted */
+	int nocode_wanted; /* true if no code generation wanted for an expression */
+	int global_expr;  /* true if compound literals must be allocated globally (used during initializers parsing */
+	CType func_vt; /* current function return type (used by return instruction) */
+	int func_var; /* true if current function is variadic */
+	int func_vc;
+	int last_line_num, last_ind, func_ind; /* debug last line number and pc */
+	char *funcname;
 };
 
 /* The current value can be: */
@@ -1152,44 +1195,8 @@ ST_FUNC NORETURN void expect(TCCState *tcc_state, const char *msg);
 
 /* ------------ tccgen.c ------------ */
 
-ST_DATA Section *text_section, *data_section, *bss_section; /* predefined sections */
-ST_DATA Section *cur_text_section; /* current section where function code is generated */
-#ifdef CONFIG_TCC_ASM
-ST_DATA Section *last_text_section; /* to handle .previous asm directive */
-#endif
-#ifdef CONFIG_TCC_BCHECK
-/* bound check related sections */
-ST_DATA Section *bounds_section; /* contains global data bound description */
-ST_DATA Section *lbounds_section; /* contains local data bound description */
-#endif
-/* symbol sections */
-ST_DATA Section *symtab_section, *strtab_section;
-/* debug sections */
-ST_DATA Section *stab_section, *stabstr_section;
-
-#define SYM_POOL_NB (8192 / sizeof(Sym))
-ST_DATA Sym *sym_free_first;
-ST_DATA void **sym_pools;
-ST_DATA int nb_sym_pools;
-
-ST_DATA Sym *global_stack;
-ST_DATA Sym *local_stack;
-ST_DATA Sym *local_label_stack;
-ST_DATA Sym *global_label_stack;
-ST_DATA Sym *define_stack;
-ST_DATA CType char_pointer_type, func_old_type, int_type, size_type;
-ST_DATA SValue __vstack[1 +/*to make bcheck happy*/ VSTACK_SIZE], *vtop;
-#define vstack  (__vstack + 1)
-ST_DATA int rsym, anon_sym, ind, loc;
-
-ST_DATA int const_wanted; /* true if constant wanted */
-ST_DATA int nocode_wanted; /* true if no code generation wanted for an expression */
-ST_DATA int global_expr;  /* true if compound literals must be allocated globally (used during initializers parsing */
-ST_DATA CType func_vt; /* current function return type (used by return instruction) */
-ST_DATA int func_var; /* true if current function is variadic */
-ST_DATA int func_vc;
-ST_DATA int last_line_num, last_ind, func_ind; /* debug last line number and pc */
-ST_DATA char *funcname;
+#define TCC_SYM_POOL_NB (8192 / sizeof(Sym))
+#define tcc_vstack(tcc_state)  (tcc_state->__vstack + 1)
 
 ST_INLN int is_float(int t);
 ST_FUNC int ieee_finite(double d);
@@ -1201,8 +1208,8 @@ ST_FUNC void vset(TCCState* tcc_state, CType *type, int r, int v);
 ST_FUNC void vswap(TCCState* tcc_state);
 ST_FUNC void vpush_global_sym(TCCState* tcc_state, CType *type, int v);
 ST_FUNC void vrote(SValue *e, int n);
-ST_FUNC void vrott(int n);
-ST_FUNC void vrotb(int n);
+ST_FUNC void vrott(TCCState *tcc_state, int n);
+ST_FUNC void vrotb(TCCState *tcc_state, int n);
 #ifdef TCC_TARGET_ARM
 ST_FUNC int get_reg_ex(TCCState *tcc_state, int rc, int rc2);
 ST_FUNC void lexpand_nr(TCCState *tcc_state);
@@ -1265,7 +1272,7 @@ ST_FUNC void put_stabs_r(TCCState *tcc_state, const char *str, int type, int oth
 ST_FUNC void put_stabn(TCCState *tcc_state, int type, int other, int desc, int value);
 ST_FUNC void put_stabd(TCCState *tcc_state, int type, int other, int desc);
 
-ST_FUNC void relocate_common_syms(void);
+ST_FUNC void relocate_common_syms(TCCState *tcc_state);
 ST_FUNC void relocate_syms(TCCState *s1, int do_resolve);
 ST_FUNC void relocate_section(TCCState *s1, Section *s);
 ST_FUNC void relocate_plt(TCCState *s1);

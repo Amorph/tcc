@@ -39,6 +39,9 @@ static int rt_get_caller_pc(addr_t *paddr, ucontext_t *uc, int level);
 static void rt_error(ucontext_t *uc, const char *fmt, ...);
 static int tcc_relocate_ex(TCCState *s1, void *ptr);
 
+//TODO design method to pass state in exception
+TCCState *last_tcc_state = 0;
+
 #ifdef _WIN64
 static void win64_add_function_table(TCCState *s1);
 #endif
@@ -97,6 +100,8 @@ LIBTCCAPI int tcc_run(TCCState *s1, int argc, char **argv)
 	if (tcc_relocate(s1, TCC_RELOCATE_AUTO) < 0)
 		return -1;
 
+	last_tcc_state = s1;
+
 	prog_main = tcc_get_symbol_err(s1, s1->runtime_main);
 
 #ifdef CONFIG_TCC_BACKTRACE
@@ -139,6 +144,8 @@ LIBTCCAPI int tcc_run(TCCState *s1, int argc, char **argv)
 	else
 #endif
 		ret = (*prog_main)(argc, argv);
+
+	last_tcc_state = 0;
 	return ret;
 }
 
@@ -246,7 +253,7 @@ ST_FUNC void tcc_set_num_callers(int n)
 
 /* print the position in the source file of PC value 'pc' by reading
 the stabs debug information */
-static addr_t rt_printline(addr_t wanted_pc, const char *msg)
+static addr_t rt_printline(TCCState *tcc_state, addr_t wanted_pc, const char *msg)
 {
 	char func_name[128], last_func_name[128];
 	addr_t func_addr, last_pc, pc;
@@ -258,10 +265,10 @@ static addr_t rt_printline(addr_t wanted_pc, const char *msg)
 	int stab_len = 0;
 	char *stab_str = NULL;
 
-	if (stab_section) {
-		stab_len = stab_section->data_offset;
-		stab_sym = (Stab_Sym *)stab_section->data;
-		stab_str = (char *)stabstr_section->data;
+	if (tcc_state->stab_section) {
+		stab_len = tcc_state->stab_section->data_offset;
+		stab_sym = (Stab_Sym *)tcc_state->stab_section->data;
+		stab_str = (char *)tcc_state->stabstr_section->data;
 	}
 
 	func_name[0] = '\0';
@@ -343,13 +350,13 @@ static addr_t rt_printline(addr_t wanted_pc, const char *msg)
 no_stabs:
 	/* second pass: we try symtab symbols (no line number info) */
 	incl_index = 0;
-	if (symtab_section)
+	if (tcc_state->symtab_section)
 	{
 		ElfW(Sym) *sym, *sym_end;
 		int type;
 
-		sym_end = (ElfW(Sym) *)(symtab_section->data + symtab_section->data_offset);
-		for (sym = (ElfW(Sym) *)symtab_section->data + 1;
+		sym_end = (ElfW(Sym) *)(tcc_state->symtab_section->data + tcc_state->symtab_section->data_offset);
+		for (sym = (ElfW(Sym) *)tcc_state->symtab_section->data + 1;
 			sym < sym_end;
 			sym++) {
 			type = ELFW(ST_TYPE)(sym->st_info);
@@ -357,7 +364,7 @@ no_stabs:
 				if (wanted_pc >= sym->st_value &&
 					wanted_pc < sym->st_value + sym->st_size) {
 					pstrcpy(last_func_name, sizeof(last_func_name),
-						(char *)strtab_section->data + sym->st_name);
+						(char *)tcc_state->strtab_section->data + sym->st_name);
 					func_addr = sym->st_value;
 					goto found;
 				}
@@ -406,7 +413,7 @@ static void rt_error(ucontext_t *uc, const char *fmt, ...)
 	for (i = 0; i<rt_num_callers; i++) {
 		if (rt_get_caller_pc(&pc, uc, i) < 0)
 			break;
-		pc = rt_printline(pc, i ? "by" : "at");
+		pc = rt_printline(last_tcc_state, pc, i ? "by" : "at");
 		if (pc == (addr_t)rt_prog_main && pc)
 			break;
 	}

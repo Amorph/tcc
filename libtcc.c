@@ -527,10 +527,10 @@ ST_FUNC void put_extern_sym2(TCCState *tcc_state, Sym *sym, Section *section,
 			name = sym->asm_label;
 		}
 		info = ELFW(ST_INFO)(sym_bind, sym_type);
-		sym->c = add_elf_sym(tcc_state, symtab_section, value, size, info, other, sh_num, name);
+		sym->c = add_elf_sym(tcc_state, tcc_state->symtab_section, value, size, info, other, sh_num, name);
 	}
 	else {
-		esym = &((ElfW(Sym) *)symtab_section->data)[sym->c];
+		esym = &((ElfW(Sym) *)tcc_state->symtab_section->data)[sym->c];
 		esym->st_value = value;
 		esym->st_size = size;
 		esym->st_shndx = sh_num;
@@ -553,7 +553,7 @@ ST_FUNC void greloc(TCCState *tcc_state, Section *s, Sym *sym, unsigned long off
 		c = sym->c;
 	}
 	/* now we can add ELF relocation info */
-	put_elf_reloc(tcc_state, symtab_section, s, offset, type, c);
+	put_elf_reloc(tcc_state, tcc_state->symtab_section, s, offset, type, c);
 }
 
 /********************************************************/
@@ -730,46 +730,46 @@ static int tcc_compile(TCCState *tcc_state)
 #endif
 	preprocess_init(tcc_state);
 
-	cur_text_section = NULL;
-	funcname = "";
-	anon_sym = SYM_FIRST_ANOM;
+	tcc_state->cur_text_section = NULL;
+	tcc_state->funcname = "";
+	tcc_state->anon_sym = SYM_FIRST_ANOM;
 
 	/* file info: full path + filename */
 	section_sym = 0; /* avoid warning */
 	if (tcc_state->do_debug) {
-		section_sym = put_elf_sym(tcc_state, symtab_section, 0, 0,
+		section_sym = put_elf_sym(tcc_state, tcc_state->symtab_section, 0, 0,
 			ELFW(ST_INFO)(STB_LOCAL, STT_SECTION), 0,
-			text_section->sh_num, NULL);
+			tcc_state->text_section->sh_num, NULL);
 		getcwd(buf, sizeof(buf));
 #ifdef _WIN32
 		normalize_slashes(buf);
 #endif
 		pstrcat(buf, sizeof(buf), "/");
 		put_stabs_r(tcc_state, buf, N_SO, 0, 0,
-			text_section->data_offset, text_section, section_sym);
+			tcc_state->text_section->data_offset, tcc_state->text_section, section_sym);
 		put_stabs_r(tcc_state, tcc_state->file->filename, N_SO, 0, 0,
-			text_section->data_offset, text_section, section_sym);
+			tcc_state->text_section->data_offset, tcc_state->text_section, section_sym);
 	}
 	/* an elf symbol of type STT_FILE must be put so that STB_LOCAL
 	symbols can be safely used */
-	put_elf_sym(tcc_state, symtab_section, 0, 0,
+	put_elf_sym(tcc_state, tcc_state->symtab_section, 0, 0,
 		ELFW(ST_INFO)(STB_LOCAL, STT_FILE), 0,
 		SHN_ABS, tcc_state->file->filename);
 
 	/* define some often used types */
-	int_type.t = VT_INT;
+	tcc_state->int_type.t = VT_INT;
 
-	char_pointer_type.t = VT_BYTE;
-	mk_pointer(tcc_state, &char_pointer_type);
+	tcc_state->char_pointer_type.t = VT_BYTE;
+	mk_pointer(tcc_state, &tcc_state->char_pointer_type);
 
 #if PTR_SIZE == 4
-	size_type.t = VT_INT;
+	tcc_state->size_type.t = VT_INT;
 #else
-	size_type.t = VT_LLONG;
+	tcc_state->size_type.t = VT_LLONG;
 #endif
 
-	func_old_type.t = VT_FUNC;
-	func_old_type.ref = sym_push(tcc_state, SYM_FIELD, &int_type, FUNC_CDECL, FUNC_OLD);
+	tcc_state->func_old_type.t = VT_FUNC;
+	tcc_state->func_old_type.ref = sym_push(tcc_state, SYM_FIELD, &tcc_state->int_type, FUNC_CDECL, FUNC_OLD);
 #ifdef TCC_TARGET_ARM
 	arm_init(tcc_state);
 #endif
@@ -788,7 +788,7 @@ static int tcc_compile(TCCState *tcc_state)
 	}
 #endif
 
-	define_start = define_stack;
+	define_start = tcc_state->define_stack;
 
 	if (setjmp(tcc_state->error_jmp_buf) == 0) {
 		tcc_state->nb_errors = 0;
@@ -797,18 +797,18 @@ static int tcc_compile(TCCState *tcc_state)
 		tcc_state->ch = tcc_state->file->buf_ptr[0];
 		tcc_state->tok_flags = TOK_FLAG_BOL | TOK_FLAG_BOF;
 		tcc_state->parse_flags = PARSE_FLAG_PREPROCESS | PARSE_FLAG_TOK_NUM;
-		pvtop = vtop;
+		pvtop = tcc_state->vtop;
 		next(tcc_state);
 		decl(tcc_state, VT_CONST);
 		if (tcc_state->tok != TOK_EOF)
 			expect(tcc_state, "declaration");
-		if (pvtop != vtop)
-			tcc_warning(tcc_state, "internal compiler error: vstack leak? (%d)", vtop - pvtop);
+		if (pvtop != tcc_state->vtop)
+			tcc_warning(tcc_state, "internal compiler error: vstack leak? (%d)", tcc_state->vtop - pvtop);
 
 		/* end of translation unit info */
 		if (tcc_state->do_debug) {
 			put_stabs_r(tcc_state, NULL, N_SO, 0, 0,
-				text_section->data_offset, text_section, section_sym);
+				tcc_state->text_section->data_offset, tcc_state->text_section, section_sym);
 		}
 	}
 
@@ -820,8 +820,8 @@ static int tcc_compile(TCCState *tcc_state)
 
 	gen_inline_functions(tcc_state);
 
-	sym_pop(tcc_state, &global_stack, NULL);
-	sym_pop(tcc_state, &local_stack, NULL);
+	sym_pop(tcc_state, &tcc_state->global_stack, NULL);
+	sym_pop(tcc_state, &tcc_state->local_stack, NULL);
 
 	return tcc_state->nb_errors != 0 ? -1 : 0;
 }
@@ -892,24 +892,24 @@ static void tcc_cleanup(TCCState *tcc_state)
 	tcc_free(tcc_state, tcc_state->table_ident);
 
 	/* free sym_pools */
-	dynarray_reset(tcc_state, &sym_pools, &nb_sym_pools);
+	dynarray_reset(tcc_state, &tcc_state->sym_pools, &tcc_state->nb_sym_pools);
 	/* string buffer */
 	cstr_free(tcc_state, &tcc_state->tokcstr);
 	/* reset symbol stack */
-	sym_free_first = NULL;
+	tcc_state->sym_free_first = NULL;
 	/* cleanup from error/setjmp */
 	tcc_state->macro_ptr = NULL;
 }
 
 LIBTCCAPI TCCState *tcc_new(void)
 {
-	TCCState *s;
+	TCCState *s, *tcc_state;
 	char buffer[100];
 	int a, b, c;
 
 	//tcc_cleanup();
 	//TODO make manual allocation for TCCState
-	s = tcc_mallocz(0, sizeof(TCCState));
+	tcc_state = s = tcc_mallocz(0, sizeof(TCCState));
 	if (!s)
 		return NULL;
 #ifdef _WIN32
@@ -1025,16 +1025,16 @@ LIBTCCAPI TCCState *tcc_new(void)
 	dynarray_add(s, (void ***)&s->sections, &s->nb_sections, NULL);
 
 	/* create standard sections */
-	text_section = new_section(s, ".text", SHT_PROGBITS, SHF_ALLOC | SHF_EXECINSTR);
-	data_section = new_section(s, ".data", SHT_PROGBITS, SHF_ALLOC | SHF_WRITE);
-	bss_section = new_section(s, ".bss", SHT_NOBITS, SHF_ALLOC | SHF_WRITE);
+	tcc_state->text_section = new_section(s, ".text", SHT_PROGBITS, SHF_ALLOC | SHF_EXECINSTR);
+	tcc_state->data_section = new_section(s, ".data", SHT_PROGBITS, SHF_ALLOC | SHF_WRITE);
+	tcc_state->bss_section = new_section(s, ".bss", SHT_NOBITS, SHF_ALLOC | SHF_WRITE);
 
 	/* symbols are always generated for linking stage */
-	symtab_section = new_symtab(s, ".symtab", SHT_SYMTAB, 0,
+	tcc_state->symtab_section = new_symtab(s, ".symtab", SHT_SYMTAB, 0,
 		".strtab",
 		".hashtab", SHF_PRIVATE);
-	strtab_section = symtab_section->link;
-	s->symtab = symtab_section;
+	tcc_state->strtab_section = tcc_state->symtab_section->link;
+	s->symtab = tcc_state->symtab_section;
 
 	/* private symbol table for dynamic symbols */
 	s->dynsymtab_section = new_symtab(s, ".dynsymtab", SHT_SYMTAB, SHF_PRIVATE,
@@ -1325,7 +1325,7 @@ LIBTCCAPI int tcc_add_symbol(TCCState *tcc_state, const char *name, const void *
 	So it is handled here as if it were in a DLL. */
 	pe_putimport(tcc_state, 0, name, (uintptr_t)val);
 #else
-	add_elf_sym(tcc_state, symtab_section, (uintptr_t)val, 0,
+	add_elf_sym(tcc_state, tcc_state->symtab_section, (uintptr_t)val, 0,
 		ELFW(ST_INFO)(STB_GLOBAL, STT_NOTYPE), 0,
 		SHN_ABS, name);
 #endif
@@ -1348,9 +1348,9 @@ LIBTCCAPI int tcc_set_output_type(TCCState *tcc_state, int output_type)
 		/* define symbol */
 		tcc_define_symbol(tcc_state, "__BOUNDS_CHECKING_ON", NULL);
 		/* create bounds sections */
-		bounds_section = new_section(tcc_state, ".bounds",
+		tcc_state->bounds_section = new_section(tcc_state, ".bounds",
 			SHT_PROGBITS, SHF_ALLOC);
-		lbounds_section = new_section(tcc_state, ".lbounds",
+		tcc_state->lbounds_section = new_section(tcc_state, ".lbounds",
 			SHT_PROGBITS, SHF_ALLOC);
 	}
 #endif
@@ -1362,11 +1362,11 @@ LIBTCCAPI int tcc_set_output_type(TCCState *tcc_state, int output_type)
 	/* add debug sections */
 	if (tcc_state->do_debug) {
 		/* stab symbols */
-		stab_section = new_section(tcc_state, ".stab", SHT_PROGBITS, 0);
-		stab_section->sh_entsize = sizeof(Stab_Sym);
-		stabstr_section = new_section(tcc_state, ".stabstr", SHT_STRTAB, 0);
-		put_elf_str(tcc_state, stabstr_section, "");
-		stab_section->link = stabstr_section;
+		tcc_state->stab_section = new_section(tcc_state, ".stab", SHT_PROGBITS, 0);
+		tcc_state->stab_section->sh_entsize = sizeof(Stab_Sym);
+		tcc_state->stabstr_section = new_section(tcc_state, ".stabstr", SHT_STRTAB, 0);
+		put_elf_str(tcc_state, tcc_state->stabstr_section, "");
+		tcc_state->stab_section->link = tcc_state->stabstr_section;
 		/* put first entry */
 		put_stabs(tcc_state, "", 0, 0, 0, 0);
 	}

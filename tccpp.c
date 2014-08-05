@@ -1095,7 +1095,7 @@ ST_INLN void define_push(TCCState *tcc_state, int v, int macro_type, int *str, S
 	if (s && !macro_is_equal(tcc_state, s->d, str))
 		tcc_warning(tcc_state, "%s redefined", get_tok_str(tcc_state, v, NULL));
 
-	s = sym_push2(tcc_state, &define_stack, v, macro_type, 0);
+	s = sym_push2(tcc_state, &tcc_state->define_stack, v, macro_type, 0);
 	s->d = str;
 	s->next = first_arg;
 	table_ident[v - TOK_IDENT]->sym_define = s;
@@ -1125,7 +1125,7 @@ ST_FUNC void free_defines(TCCState *tcc_state, Sym *b)
 	Sym *top, *top1;
 	int v;
 
-	top = define_stack;
+	top = tcc_state->define_stack;
 	while (top != b) {
 		top1 = top->prev;
 		/* do not free args or predefined defines */
@@ -1137,7 +1137,7 @@ ST_FUNC void free_defines(TCCState *tcc_state, Sym *b)
 		sym_free(tcc_state, top);
 		top = top1;
 	}
-	define_stack = b;
+	tcc_state->define_stack = b;
 }
 
 /* label lookup */
@@ -1155,7 +1155,7 @@ ST_FUNC Sym *label_push(TCCState *tcc_state, Sym **ptop, int v, int flags)
 	s = sym_push2(tcc_state, ptop, v, 0, 0);
 	s->r = flags;
 	ps = &table_ident[v - TOK_IDENT]->sym_label;
-	if (ptop == &global_label_stack) {
+	if (ptop == &tcc_state->global_label_stack) {
 		/* modify the top most local identifier, so that
 		sym_identifier will point to 's' when popped */
 		while (*ps != NULL)
@@ -1184,7 +1184,7 @@ ST_FUNC void label_pop(TCCState *tcc_state, Sym **ptop, Sym *slast)
 			if (s->c) {
 				/* define corresponding symbol. A size of
 				1 is put. */
-				put_extern_sym(tcc_state, s, cur_text_section, s->jnext, 1);
+				put_extern_sym(tcc_state, s, tcc_state->cur_text_section, s->jnext, 1);
 			}
 		}
 		/* remove label */
@@ -1281,7 +1281,7 @@ ST_FUNC void parse_define(TCCState* tcc_state)
 			}
 			if (varg < TOK_IDENT)
 				tcc_error(tcc_state, "\'%s\' may not appear in parameter list", get_tok_str(tcc_state, varg, NULL));
-			s = sym_push2(tcc_state, &define_stack, varg | SYM_FIELD, is_vaargs, 0);
+			s = sym_push2(tcc_state, &tcc_state->define_stack, varg | SYM_FIELD, is_vaargs, 0);
 			*ps = s;
 			ps = &s->next;
 			if (tok != ',')
@@ -3207,17 +3207,17 @@ ST_INLN void unget_tok(TCCState *tcc_state, int last_tok)
 
 /* better than nothing, but needs extension to handle '-E' option
 correctly too */
-ST_FUNC void preprocess_init(TCCState *s1)
+ST_FUNC void preprocess_init(TCCState *tcc_state)
 {
-	s1->include_stack_ptr = s1->include_stack;
+	tcc_state->include_stack_ptr = tcc_state->include_stack;
 	/* XXX: move that before to avoid having to initialize
 	file->ifdef_stack_ptr ? */
-	s1->ifdef_stack_ptr = s1->ifdef_stack;
-	file->ifdef_stack_ptr = s1->ifdef_stack_ptr;
+	tcc_state->ifdef_stack_ptr = tcc_state->ifdef_stack;
+	tcc_state->file->ifdef_stack_ptr = tcc_state->ifdef_stack_ptr;
 
-	vtop = vstack - 1;
-	s1->pack_stack[0] = 0;
-	s1->pack_stack_ptr = s1->pack_stack;
+	tcc_state->vtop = tcc_vstack(tcc_state) - 1;
+	tcc_state->pack_stack[0] = 0;
+	tcc_state->pack_stack_ptr = tcc_state->pack_stack;
 }
 
 ST_FUNC void preprocess_new(TCCState *tcc_state)
@@ -3248,7 +3248,7 @@ ST_FUNC void preprocess_new(TCCState *tcc_state)
 }
 
 /* Preprocess the current file */
-ST_FUNC int tcc_preprocess(TCCState *s1)
+ST_FUNC int tcc_preprocess(TCCState *tcc_state)
 {
 	Sym *define_start;
 
@@ -3256,8 +3256,8 @@ ST_FUNC int tcc_preprocess(TCCState *s1)
 	int token_seen, line_ref, d;
 	const char *s;
 
-	preprocess_init(s1);
-	define_start = define_stack;
+	preprocess_init(tcc_state);
+	define_start = tcc_state->define_stack;
 	ch = file->buf_ptr[0];
 	tok_flags = TOK_FLAG_BOL | TOK_FLAG_BOF;
 	parse_flags = PARSE_FLAG_ASM_COMMENTS | PARSE_FLAG_PREPROCESS |
@@ -3265,10 +3265,10 @@ ST_FUNC int tcc_preprocess(TCCState *s1)
 	token_seen = 0;
 	line_ref = 0;
 	file_ref = NULL;
-	iptr = s1->include_stack_ptr;
+	iptr = tcc_state->include_stack_ptr;
 
 	for (;;) {
-		next(s1);
+		next(tcc_state);
 		if (tok == TOK_EOF) {
 			break;
 		}
@@ -3285,26 +3285,26 @@ ST_FUNC int tcc_preprocess(TCCState *s1)
 			d = file->line_num - line_ref;
 			if (file != file_ref || d < 0 || d >= 8) {
 			print_line:
-				iptr_new = s1->include_stack_ptr;
+				iptr_new = tcc_state->include_stack_ptr;
 				s = iptr_new > iptr ? " 1"
 					: iptr_new < iptr ? " 2"
-					: iptr_new > s1->include_stack ? " 3"
+					: iptr_new > tcc_state->include_stack ? " 3"
 					: ""
 					;
 				iptr = iptr_new;
-				fprintf(s1->ppfp, "# %d \"%s\"%s\n", file->line_num, file->filename, s);
+				fprintf(tcc_state->ppfp, "# %d \"%s\"%s\n", file->line_num, file->filename, s);
 			}
 			else {
 				while (d)
-					fputs("\n", s1->ppfp), --d;
+					fputs("\n", tcc_state->ppfp), --d;
 			}
 			line_ref = (file_ref = file)->line_num;
 			token_seen = tok != TOK_LINEFEED;
 			if (!token_seen)
 				continue;
 		}
-		fputs(get_tok_str(s1, tok, &tokc), s1->ppfp);
+		fputs(get_tok_str(tcc_state, tok, &tokc), tcc_state->ppfp);
 	}
-	free_defines(s1, define_start);
+	free_defines(tcc_state, define_start);
 	return 0;
 }
