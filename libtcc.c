@@ -868,10 +868,10 @@ LIBTCCAPI void tcc_undefine_symbol(TCCState *tcc_state, const char *sym)
 	TokenSym *ts;
 	Sym *s;
 	ts = tok_alloc(tcc_state, sym, strlen(sym));
-	s = define_find(ts->tok);
+	s = define_find(tcc_state, ts->tok);
 	/* undefine symbol by putting an invalid name */
 	if (s)
-		define_undef(s);
+		define_undef(tcc_state, s);
 }
 
 /* cleanup all static data used during compilation */
@@ -1211,9 +1211,11 @@ ST_FUNC int tcc_add_file_internal(TCCState *tcc_state, const char *filename, int
 		if (ehdr.e_type == ET_DYN) {
 			if (tcc_state->output_type == TCC_OUTPUT_MEMORY) {
 #ifdef TCC_IS_NATIVE
+#ifndef _WIN32//TODO check this
 				void *h;
 				h = dlopen(filename, RTLD_GLOBAL | RTLD_LAZY);
 				if (h)
+#endif
 #endif
 					ret = 0;
 			}

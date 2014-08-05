@@ -1169,15 +1169,15 @@ returned at eof */
 
 ST_FUNC TokenSym *tok_alloc(TCCState *tcc_state, const char *str, int len);
 ST_FUNC char *get_tok_str(TCCState *tcc_state, int v, CValue *cv);
-ST_FUNC void save_parse_state(ParseState *s);
-ST_FUNC void restore_parse_state(ParseState *s);
+ST_FUNC void save_parse_state(TCCState *tcc_state, ParseState *s);
+ST_FUNC void restore_parse_state(TCCState *tcc_state, ParseState *s);
 ST_INLN void tok_str_new(TCCState *tcc_state, TokenString *s);
 ST_FUNC void tok_str_free(TCCState *tcc_state, int *str);
 ST_FUNC void tok_str_add(TCCState *tcc_state, TokenString *s, int t);
 ST_FUNC void tok_str_add_tok(TCCState *tcc_state, TokenString *s);
 ST_INLN void define_push(TCCState *tcc_state, int v, int macro_type, int *str, Sym *first_arg);
-ST_FUNC void define_undef(Sym *s);
-ST_INLN Sym *define_find(int v);
+ST_FUNC void define_undef(TCCState *tcc_state, Sym *s);
+ST_INLN Sym *define_find(TCCState *tcc_state, int v);
 ST_FUNC void free_defines(TCCState *tcc_state, Sym *b);
 ST_FUNC Sym *label_find(TCCState *tcc_state, int v);
 ST_FUNC Sym *label_push(TCCState *tcc_state, Sym **ptop, int v, int flags);
@@ -1295,8 +1295,8 @@ ST_FUNC int tcc_load_dll(TCCState *s1, int fd, const char *filename, int level);
 ST_FUNC int tcc_load_ldscript(TCCState *s1);
 ST_FUNC uint8_t *parse_comment(TCCState *tcc_state, uint8_t *p);
 ST_FUNC void minp(TCCState *tcc_state);
-ST_INLN void inp(void);
-ST_FUNC int handle_eob(void);
+ST_INLN void inp(TCCState *tcc_state);
+ST_FUNC int handle_eob(TCCState *tcc_state);
 #endif
 
 /* ------------ xxx-gen.c ------------ */

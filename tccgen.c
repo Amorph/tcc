@@ -5698,7 +5698,7 @@ static void decl_initializer_alloc(TCCState* tcc_state, CType *type, AttributeDe
 		tok_str_add(tcc_state, &init_str, 0);
 
 		/* compute size */
-		save_parse_state(&saved_parse_state);
+		save_parse_state(tcc_state, &saved_parse_state);
 
 		tcc_state->macro_ptr = init_str.str;
 		next(tcc_state);
@@ -5882,7 +5882,7 @@ no_alloc:
 	/* restore parse state if needed */
 	if (init_str.str) {
 		tok_str_free(tcc_state, init_str.str);
-		restore_parse_state(&saved_parse_state);
+		restore_parse_state(tcc_state, &saved_parse_state);
 	}
 }
 

@@ -3072,26 +3072,26 @@ the_end:
 #define LD_TOK_EOF  (-1)
 
 /* return next ld script token */
-static int ld_next(TCCState *s1, char *name, int name_size)
+static int ld_next(TCCState *tcc_state, char *name, int name_size)
 {
 	int c;
 	char *q;
 
 redo:
-	switch (ch) {
+	switch (tcc_state->ch) {
 	case ' ':
 	case '\t':
 	case '\f':
 	case '\v':
 	case '\r':
 	case '\n':
-		inp();
+		inp(tcc_state);
 		goto redo;
 	case '/':
-		minp(s1);
-		if (ch == '*') {
-			file->buf_ptr = parse_comment(s1, file->buf_ptr);
-			ch = file->buf_ptr[0];
+		minp(tcc_state);
+		if (tcc_state->ch == '*') {
+			tcc_state->file->buf_ptr = parse_comment(tcc_state, tcc_state->file->buf_ptr);
+			tcc_state->ch = tcc_state->file->buf_ptr[0];
 			goto redo;
 		}
 		else {
@@ -3162,15 +3162,15 @@ redo:
 		q = name;
 	parse_name:
 		for (;;) {
-			if (!((ch >= 'a' && ch <= 'z') ||
-				(ch >= 'A' && ch <= 'Z') ||
-				(ch >= '0' && ch <= '9') ||
-				strchr("/.-_+=$:\\,~", ch)))
+			if (!((tcc_state->ch >= 'a' && tcc_state->ch <= 'z') ||
+				(tcc_state->ch >= 'A' && tcc_state->ch <= 'Z') ||
+				(tcc_state->ch >= '0' && tcc_state->ch <= '9') ||
+				strchr("/.-_+=$:\\,~", tcc_state->ch)))
 				break;
 			if ((q - name) < name_size - 1) {
-				*q++ = ch;
+				*q++ = tcc_state->ch;
 			}
-			minp(s1);
+			minp(tcc_state);
 		}
 		*q = '\0';
 		c = LD_TOK_NAME;
@@ -3179,8 +3179,8 @@ redo:
 		c = LD_TOK_EOF;
 		break;
 	default:
-		c = ch;
-		inp();
+		c = tcc_state->ch;
+		inp(tcc_state);
 		break;
 	}
 	return c;
@@ -3286,36 +3286,36 @@ lib_parse_error:
 
 /* interpret a subset of GNU ldscripts to handle the dummy libc.so
 files */
-ST_FUNC int tcc_load_ldscript(TCCState *s1)
+ST_FUNC int tcc_load_ldscript(TCCState *tcc_state)
 {
 	char cmd[64];
 	char filename[1024];
 	int t, ret;
 
-	ch = file->buf_ptr[0];
-	ch = handle_eob();
+	tcc_state->ch = tcc_state->file->buf_ptr[0];
+	tcc_state->ch = handle_eob(tcc_state);
 	for (;;) {
-		t = ld_next(s1, cmd, sizeof(cmd));
+		t = ld_next(tcc_state, cmd, sizeof(cmd));
 		if (t == LD_TOK_EOF)
 			return 0;
 		else if (t != LD_TOK_NAME)
 			return -1;
 		if (!strcmp(cmd, "INPUT") ||
 			!strcmp(cmd, "GROUP")) {
-			ret = ld_add_file_list(s1, cmd, 0);
+			ret = ld_add_file_list(tcc_state, cmd, 0);
 			if (ret)
 				return ret;
 		}
 		else if (!strcmp(cmd, "OUTPUT_FORMAT") ||
 			!strcmp(cmd, "TARGET")) {
 			/* ignore some commands */
-			t = ld_next(s1, cmd, sizeof(cmd));
+			t = ld_next(tcc_state, cmd, sizeof(cmd));
 			if (t != '(')
-				expect(s1, "(");
+				expect(tcc_state, "(");
 			for (;;) {
-				t = ld_next(s1, filename, sizeof(filename));
+				t = ld_next(tcc_state, filename, sizeof(filename));
 				if (t == LD_TOK_EOF) {
-					tcc_error_noabort(s1, "unexpected end of file");
+					tcc_error_noabort(tcc_state, "unexpected end of file");
 					return -1;
 				}
 				else if (t == ')') {
