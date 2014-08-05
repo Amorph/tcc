@@ -109,11 +109,11 @@ static void exec_other_tcc(TCCState *s, char **argv, const char *optarg)
 				printf("tcc: using '%s'\n", child_name), fflush(stdout);
 			execvp(argv[0] = child_path, argv);
 		}
-		tcc_error("'%s' not found", child_name);
+		tcc_error(s, "'%s' not found", child_name);
 	case 0: /* ignore -march etc. */
 		break;
 	default:
-		tcc_warning("unsupported option \"-m%s\"", optarg);
+		tcc_warning(s, "unsupported option \"-m%s\"", optarg);
 	}
 }
 #else
@@ -141,7 +141,7 @@ static void gen_makedeps(TCCState *s, const char *target, const char *filename)
 	/* XXX return err codes instead of error() ? */
 	depout = fopen(filename, "w");
 	if (!depout)
-		tcc_error("could not open '%s'", filename);
+		tcc_error(s, "could not open '%s'", filename);
 
 	fprintf(depout, "%s : \\\n", target);
 	for (i = 0; i<s->nb_target_deps; ++i)
@@ -175,7 +175,7 @@ static char *default_outputfile(TCCState *s, const char *first_file)
 			else
 				strcpy(buf, "a.out");
 
-	return tcc_strdup(buf);
+	return tcc_strdup(s, buf);
 }
 
 static void print_paths(const char *msg, char **paths, int nb_paths)
@@ -275,15 +275,15 @@ int main(int argc, char **argv)
 		return 0;
 
 	if (s->nb_files == 0)
-		tcc_error("no input files\n");
+		tcc_error(s, "no input files\n");
 
 	/* check -c consistency : only single file handled. XXX: checks file type */
 	if (s->output_type == TCC_OUTPUT_OBJ && !s->option_r) {
 		if (s->nb_libraries != 0)
-			tcc_error("cannot specify libraries with -c");
+			tcc_error(s, "cannot specify libraries with -c");
 		/* accepts only a single input file */
 		if (s->nb_files != 1)
-			tcc_error("cannot specify multiple files with -c");
+			tcc_error(s, "cannot specify multiple files with -c");
 	}
 
 	if (s->output_type == TCC_OUTPUT_PREPROCESS) {
@@ -293,7 +293,7 @@ int main(int argc, char **argv)
 		else {
 			s->ppfp = fopen(s->outfile, "w");
 			if (!s->ppfp)
-				tcc_error("could not write '%s'", s->outfile);
+				tcc_error(s, "could not write '%s'", s->outfile);
 		}
 	}
 
@@ -310,7 +310,7 @@ int main(int argc, char **argv)
 		filename = s->files[i];
 		if (filename[0] == '-' && filename[1] == 'l') {
 			if (tcc_add_library(s, filename + 2) < 0) {
-				tcc_error_noabort("cannot find '%s'", filename);
+				tcc_error_noabort(s, "cannot find '%s'", filename);
 				ret = 1;
 			}
 		}
@@ -332,7 +332,7 @@ int main(int argc, char **argv)
 #ifdef TCC_IS_NATIVE
 			ret = tcc_run(s, argc - 1 - optind, argv + 1 + optind);
 #else
-			tcc_error_noabort("-run is not available in a cross compiler");
+			tcc_error_noabort(s, "-run is not available in a cross compiler");
 			ret = 1;
 #endif
 		}
@@ -351,7 +351,8 @@ int main(int argc, char **argv)
 	}
 
 	tcc_delete(s);
+	//TODO memstat after delete?
 	if (bench)
-		tcc_memstats();
+		tcc_memstats(s);
 	return ret;
 }

@@ -458,11 +458,11 @@ static DWORD pe_virtual_align(struct pe_info *pe, DWORD n)
 	return (n + (pe->section_align - 1)) & ~(pe->section_align - 1);
 }
 
-static void pe_align_section(Section *s, int a)
+static void pe_align_section(TCCState *tcc_state, Section *s, int a)
 {
 	int i = s->data_offset & (a - 1);
 	if (i)
-		section_ptr_add(s, a - i);
+		section_ptr_add(tcc_state, s, a - i);
 }
 
 static void pe_set_datadir(struct pe_header *hdr, int dir, DWORD addr, DWORD size)
@@ -494,7 +494,7 @@ static void pe_fpad(FILE *fp, DWORD new_pos)
 }
 
 /*----------------------------------------------------------------------------*/
-static int pe_write(struct pe_info *pe)
+static int pe_write(TCCState *tcc_state, struct pe_info *pe)
 {
 	static const struct pe_header pe_template = {
 			{
@@ -609,7 +609,7 @@ static int pe_write(struct pe_info *pe)
 
 	op = fopen(pe->filename, "wb");
 	if (NULL == op) {
-		tcc_error_noabort("could not write '%s': %s", pe->filename, strerror(errno));
+		tcc_error_noabort(tcc_state, "could not write '%s': %s", pe->filename, strerror(errno));
 		return -1;
 	}
 
@@ -736,7 +736,7 @@ static int pe_write(struct pe_info *pe)
 
 /*----------------------------------------------------------------------------*/
 
-static struct import_symbol *pe_add_import(struct pe_info *pe, int sym_index)
+static struct import_symbol *pe_add_import(TCCState *tcc_state, struct pe_info *pe, int sym_index)
 {
 	int i;
 	int dll_index;
@@ -752,17 +752,17 @@ static struct import_symbol *pe_add_import(struct pe_info *pe, int sym_index)
 		p = pe->imp_info[i];
 		goto found_dll;
 	}
-	p = tcc_mallocz(sizeof *p);
+	p = tcc_mallocz(tcc_state, sizeof *p);
 	p->dll_index = dll_index;
-	dynarray_add((void***)&pe->imp_info, &pe->imp_count, p);
+	dynarray_add(tcc_state, (void***)&pe->imp_info, &pe->imp_count, p);
 
 found_dll:
 	i = dynarray_assoc((void**)p->symbols, p->sym_count, sym_index);
 	if (-1 != i)
 		return p->symbols[i];
 
-	s = tcc_mallocz(sizeof *s);
-	dynarray_add((void***)&p->symbols, &p->sym_count, s);
+	s = tcc_mallocz(tcc_state, sizeof *s);
+	dynarray_add(tcc_state, (void***)&p->symbols, &p->sym_count, s);
 	s->sym_index = sym_index;
 	return s;
 }
@@ -780,13 +780,13 @@ static void pe_build_imports(TCCState *tcc_state, struct pe_info *pe)
 	if (0 == sym_cnt)
 		return;
 
-	pe_align_section(pe->thunk, 16);
+	pe_align_section(tcc_state, pe->thunk, 16);
 
 	pe->imp_offs = dll_ptr = pe->thunk->data_offset;
 	pe->imp_size = (ndlls + 1) * sizeof(IMAGE_IMPORT_DESCRIPTOR);
 	pe->iat_offs = dll_ptr + pe->imp_size;
 	pe->iat_size = (sym_cnt + ndlls) * sizeof(ADDR3264);
-	section_ptr_add(pe->thunk, pe->imp_size + 2 * pe->iat_size);
+	section_ptr_add(tcc_state, pe->thunk, pe->imp_size + 2 * pe->iat_size);
 
 	thk_ptr = pe->iat_offs;
 	ent_ptr = pe->iat_offs + pe->iat_size;
@@ -806,7 +806,7 @@ static void pe_build_imports(TCCState *tcc_state, struct pe_info *pe)
 			name = "", dllref = NULL;
 
 		/* put the dll name into the import header */
-		v = put_elf_str(pe->thunk, name);
+		v = put_elf_str(tcc_state, pe->thunk, name);
 		hdr = (IMAGE_IMPORT_DESCRIPTOR*)(pe->thunk->data + dll_ptr);
 		hdr->FirstThunk = thk_ptr + rva_base;
 		hdr->OriginalFirstThunk = ent_ptr + rva_base;
@@ -837,7 +837,7 @@ static void pe_build_imports(TCCState *tcc_state, struct pe_info *pe)
 						v = (ADDR3264)GetProcAddress(dllref->handle, ordinal ? (LPCSTR)NULL + ordinal : name);
 					}
 					if (!v)
-						tcc_error_noabort("can't build symbol '%s'", name);
+						tcc_error_noabort(tcc_state, "can't build symbol '%s'", name);
 				}
 				else
 #endif
@@ -846,8 +846,8 @@ static void pe_build_imports(TCCState *tcc_state, struct pe_info *pe)
 					}
 					else {
 						v = pe->thunk->data_offset + rva_base;
-						section_ptr_add(pe->thunk, sizeof(WORD)); /* hint, not used */
-						put_elf_str(pe->thunk, name);
+						section_ptr_add(tcc_state, pe->thunk, sizeof(WORD)); /* hint, not used */
+						put_elf_str(tcc_state, pe->thunk, name);
 					}
 
 			}
@@ -861,9 +861,9 @@ static void pe_build_imports(TCCState *tcc_state, struct pe_info *pe)
 			ent_ptr += sizeof(ADDR3264);
 		}
 		dll_ptr += sizeof(IMAGE_IMPORT_DESCRIPTOR);
-		dynarray_reset(&p->symbols, &p->sym_count);
+		dynarray_reset(tcc_state, &p->symbols, &p->sym_count);
 	}
-	dynarray_reset(&pe->imp_info, &pe->imp_count);
+	dynarray_reset(tcc_state, &pe->imp_info, &pe->imp_count);
 }
 
 /* ------------------------------------------------------------- */
@@ -905,10 +905,10 @@ static void pe_build_exports(TCCState* tcc_state, struct pe_info *pe)
 		if ((sym->st_other & ST_PE_EXPORT)
 			/* export only symbols from actually written sections */
 			&& pe->s1->sections[sym->st_shndx]->sh_addr) {
-			p = tcc_malloc(sizeof *p);
+			p = tcc_malloc(tcc_state, sizeof *p);
 			p->index = sym_index;
 			p->name = name;
-			dynarray_add((void***)&sorted, &sym_count, p);
+			dynarray_add(tcc_state, (void***)&sorted, &sym_count, p);
 		}
 #if 0
 		if (sym->st_other & ST_PE_EXPORT)
@@ -923,7 +923,7 @@ static void pe_build_exports(TCCState* tcc_state, struct pe_info *pe)
 
 	qsort(sorted, sym_count, sizeof *sorted, sym_cmp);
 
-	pe_align_section(pe->thunk, 16);
+	pe_align_section(tcc_state, pe->thunk, 16);
 	dllname = tcc_basename(pe->filename);
 
 	pe->exp_offs = pe->thunk->data_offset;
@@ -932,7 +932,7 @@ static void pe_build_exports(TCCState* tcc_state, struct pe_info *pe)
 	ord_o = name_o + sym_count * sizeof(DWORD);
 	str_o = ord_o + sym_count * sizeof(WORD);
 
-	hdr = section_ptr_add(pe->thunk, str_o - pe->exp_offs);
+	hdr = section_ptr_add(tcc_state, pe->thunk, str_o - pe->exp_offs);
 	hdr->Characteristics = 0;
 	hdr->Base = 1;
 	hdr->NumberOfFunctions = sym_count;
@@ -941,7 +941,7 @@ static void pe_build_exports(TCCState* tcc_state, struct pe_info *pe)
 	hdr->AddressOfNames = name_o + rva_base;
 	hdr->AddressOfNameOrdinals = ord_o + rva_base;
 	hdr->Name = str_o + rva_base;
-	put_elf_str(pe->thunk, dllname);
+	put_elf_str(tcc_state, pe->thunk, dllname);
 
 #if 1
 	/* automatically write exports to <output-filename>.def */
@@ -949,7 +949,7 @@ static void pe_build_exports(TCCState* tcc_state, struct pe_info *pe)
 	strcpy(tcc_fileextension(buf), ".def");
 	op = fopen(buf, "w");
 	if (NULL == op) {
-		tcc_error_noabort("could not create '%s': %s", buf, strerror(errno));
+		tcc_error_noabort(tcc_state, "could not create '%s': %s", buf, strerror(errno));
 	}
 	else {
 		fprintf(op, "LIBRARY %s\n\nEXPORTS\n", dllname);
@@ -968,7 +968,7 @@ static void pe_build_exports(TCCState* tcc_state, struct pe_info *pe)
 			= pe->thunk->data_offset + rva_base;
 		*(WORD*)(pe->thunk->data + ord_o)
 			= ord;
-		put_elf_str(pe->thunk, name);
+		put_elf_str(tcc_state, pe->thunk, name);
 		func_o += sizeof(DWORD);
 		name_o += sizeof(DWORD);
 		ord_o += sizeof(WORD);
@@ -976,13 +976,13 @@ static void pe_build_exports(TCCState* tcc_state, struct pe_info *pe)
 			fprintf(op, "%s\n", name);
 	}
 	pe->exp_size = pe->thunk->data_offset - pe->exp_offs;
-	dynarray_reset(&sorted, &sym_count);
+	dynarray_reset(tcc_state, &sorted, &sym_count);
 	if (op)
 		fclose(op);
 }
 
 /* ------------------------------------------------------------- */
-static void pe_build_reloc(struct pe_info *pe)
+static void pe_build_reloc(TCCState *tcc_state, struct pe_info *pe)
 {
 	DWORD offset, block_ptr, addr;
 	int count, i;
@@ -1001,11 +1001,11 @@ static void pe_build_reloc(struct pe_info *pe)
 				continue;
 			if (count == 0) { /* new block */
 				block_ptr = pe->reloc->data_offset;
-				section_ptr_add(pe->reloc, sizeof(struct pe_reloc_header));
+				section_ptr_add(tcc_state, pe->reloc, sizeof(struct pe_reloc_header));
 				offset = addr & 0xFFFFFFFF << 12;
 			}
 			if ((addr -= offset)  < (1 << 12)) { /* one block spans 4k addresses */
-				WORD *wp = section_ptr_add(pe->reloc, sizeof(WORD));
+				WORD *wp = section_ptr_add(tcc_state, pe->reloc, sizeof(WORD));
 				*wp = addr | IMAGE_REL_BASED_HIGHLOW << 12;
 				++count;
 				continue;
@@ -1026,7 +1026,7 @@ static void pe_build_reloc(struct pe_info *pe)
 			/* store the last block and ready for a new one */
 			struct pe_reloc_header *hdr;
 			if (count & 1) /* align for DWORDS */
-				section_ptr_add(pe->reloc, sizeof(WORD)), ++count;
+				section_ptr_add(tcc_state, pe->reloc, sizeof(WORD)), ++count;
 			hdr = (struct pe_reloc_header *)(pe->reloc->data + block_ptr);
 			hdr->offset = offset - pe->imagebase;
 			hdr->size = count * sizeof(WORD) + sizeof(struct pe_reloc_header);
@@ -1085,7 +1085,7 @@ static int pe_assign_addresses(TCCState *tcc_state, struct pe_info *pe)
 
 	// pe->thunk = new_section(pe->s1, ".iedat", SHT_PROGBITS, SHF_ALLOC);
 
-	section_order = tcc_malloc(pe->s1->nb_sections * sizeof(int));
+	section_order = tcc_malloc(tcc_state, pe->s1->nb_sections * sizeof(int));
 	for (o = k = 0; k < sec_last; ++k) {
 		for (i = 1; i < pe->s1->nb_sections; ++i) {
 			s = pe->s1->sections[i];
@@ -1097,7 +1097,7 @@ static int pe_assign_addresses(TCCState *tcc_state, struct pe_info *pe)
 		}
 	}
 
-	pe->sec_info = tcc_mallocz(o * sizeof(struct section_info));
+	pe->sec_info = tcc_mallocz(tcc_state, o * sizeof(struct section_info));
 	addr = pe->imagebase + 1;
 
 	for (i = 0; i < o; ++i)
@@ -1134,7 +1134,7 @@ static int pe_assign_addresses(TCCState *tcc_state, struct pe_info *pe)
 		}
 
 		if (c == sec_reloc)
-			pe_build_reloc(pe);
+			pe_build_reloc(tcc_state, pe);
 
 		if (s->data_offset)
 		{
@@ -1171,7 +1171,7 @@ static int pe_assign_addresses(TCCState *tcc_state, struct pe_info *pe)
 	pe->s1->verbose = 2;
 #endif
 
-	tcc_free(section_order);
+	tcc_free(tcc_state, section_order);
 	return 0;
 }
 
@@ -1218,7 +1218,7 @@ static int pe_check_symbols(TCCState *tcc_state, struct pe_info *pe)
 	int sym_index, sym_end;
 	int ret = 0;
 
-	pe_align_section(text_section, 8);
+	pe_align_section(tcc_state, text_section, 8);
 
 	sym_end = symtab_section->data_offset / sizeof(ElfW(Sym));
 	for (sym_index = 1; sym_index < sym_end; ++sym_index) {
@@ -1242,7 +1242,7 @@ static int pe_check_symbols(TCCState *tcc_state, struct pe_info *pe)
 					type = STT_OBJECT;
 			}
 
-			is = pe_add_import(pe, imp_sym);
+			is = pe_add_import(tcc_state, pe, imp_sym);
 
 			if (type == STT_FUNC) {
 				unsigned long offset = is->thk_offset;
@@ -1257,11 +1257,11 @@ static int pe_check_symbols(TCCState *tcc_state, struct pe_info *pe)
 					offset = text_section->data_offset;
 					/* add the 'jmp IAT[x]' instruction */
 #ifdef TCC_TARGET_ARM
-					p = section_ptr_add(text_section, 8 + 4); // room for code and address
+					p = section_ptr_add(tcc_state, text_section, 8 + 4); // room for code and address
 					(*(DWORD*)(p)) = 0xE59FC000; // arm code ldr ip, [pc] ; PC+8+0 = 0001xxxx
 					(*(DWORD*)(p + 2)) = 0xE59CF000; // arm code ldr pc, [ip]
 #else
-					p = section_ptr_add(text_section, 8);
+					p = section_ptr_add(tcc_state, text_section, 8);
 					*p = 0x25FF;
 #ifdef TCC_TARGET_X86_64
 					*(DWORD*)(p + 1) = (DWORD)-4;
@@ -1271,7 +1271,7 @@ static int pe_check_symbols(TCCState *tcc_state, struct pe_info *pe)
 					pe_build_imports */
 					sprintf(buffer, "IAT.%s", name);
 					is->iat_index = put_elf_sym(
-						symtab_section, 0, sizeof(DWORD),
+						tcc_state, symtab_section, 0, sizeof(DWORD),
 						ELFW(ST_INFO)(STB_GLOBAL, STT_OBJECT),
 						0, SHN_UNDEF, buffer);
 #ifdef TCC_TARGET_ARM
@@ -1303,7 +1303,7 @@ static int pe_check_symbols(TCCState *tcc_state, struct pe_info *pe)
 			}
 
 		not_found:
-			tcc_error_noabort("undefined symbol '%s'", name);
+			tcc_error_noabort(tcc_state, "undefined symbol '%s'", name);
 			ret = -1;
 
 		}
@@ -1477,7 +1477,7 @@ ST_FUNC SValue *pe_getimport(TCCState *tcc_state, SValue *sv, SValue *v2)
 	if (!(esym->st_other & ST_PE_IMPORT))
 		return sv;
 
-	// printf("import %04x %04x %04x %s\n", sv->type.t, sym->type.t, sv->r, get_tok_str(sv->sym->v, NULL));
+	// printf("import %04x %04x %04x %s\n", sv->type.t, sym->type.t, sv->r, get_tok_str(tcc_state, sv->sym->v, NULL));
 
 	memset(v2, 0, sizeof *v2);
 	v2->type.t = VT_PTR;
@@ -1520,9 +1520,9 @@ static int add_dllref(TCCState *s1, const char *dllname)
 	for (i = 0; i < s1->nb_loaded_dlls; ++i)
 		if (0 == strcmp(s1->loaded_dlls[i]->name, dllname))
 			return i + 1;
-	dllref = tcc_mallocz(sizeof(DLLReference) + strlen(dllname));
+	dllref = tcc_mallocz(s1, sizeof(DLLReference) + strlen(dllname));
 	strcpy(dllref->name, dllname);
-	dynarray_add((void ***)&s1->loaded_dlls, &s1->nb_loaded_dlls, dllref);
+	dynarray_add(s1, (void ***)&s1->loaded_dlls, &s1->nb_loaded_dlls, dllref);
 	return s1->nb_loaded_dlls;
 }
 
@@ -1556,7 +1556,7 @@ static int pe_load_res(TCCState *s1, int fd)
 		goto quit;
 
 	rsrc_section = new_section(s1, ".rsrc", SHT_PROGBITS, SHF_ALLOC);
-	ptr = section_ptr_add(rsrc_section, hdr.sectionhdr.SizeOfRawData);
+	ptr = section_ptr_add(s1, rsrc_section, hdr.sectionhdr.SizeOfRawData);
 	offs = hdr.sectionhdr.PointerToRawData;
 	if (!read_mem(fd, offs, ptr, hdr.sectionhdr.SizeOfRawData))
 		goto quit;
@@ -1657,13 +1657,13 @@ static int pe_load_dll(TCCState *s1, const char *dllname, int fd)
 {
 	char *p, *q;
 	int index;
-	p = get_export_names(fd);
+	p = get_export_names(s1, fd);
 	if (!p)
 		return -1;
 	index = add_dllref(s1, dllname);
 	for (q = p; *q; q += 1 + strlen(q))
 		pe_putimport(s1, index, q, 0);
-	tcc_free(p);
+	tcc_free(s1, p);
 	return 0;
 }
 
@@ -1688,7 +1688,7 @@ static unsigned pe_add_uwwind_info(TCCState *s1)
 	if (NULL == s1->uw_pdata) {
 		s1->uw_pdata = find_section(s1, ".pdata");
 		s1->uw_pdata->sh_addralign = 4;
-		s1->uw_sym = put_elf_sym(symtab_section, 0, 0, 0, 0, text_section->sh_num, NULL);
+		s1->uw_sym = put_elf_sym(s1, symtab_section, 0, 0, 0, 0, text_section->sh_num, NULL);
 	}
 
 	if (0 == s1->uw_offs) {
@@ -1707,9 +1707,9 @@ static unsigned pe_add_uwwind_info(TCCState *s1)
 		Section *s = text_section;
 		unsigned char *p;
 
-		section_ptr_add(s, -s->data_offset & 3); /* align */
+		section_ptr_add(s1, s, -s->data_offset & 3); /* align */
 		s1->uw_offs = s->data_offset;
-		p = section_ptr_add(s, sizeof uw_info);
+		p = section_ptr_add(s1, s, sizeof uw_info);
 		memcpy(p, uw_info, sizeof uw_info);
 	}
 
@@ -1718,7 +1718,6 @@ static unsigned pe_add_uwwind_info(TCCState *s1)
 
 ST_FUNC void pe_add_unwind_data(TCCState *tcc_state, unsigned start, unsigned end, unsigned stack)
 {
-	TCCState *s1 = tcc_state;
 	Section *pd;
 	unsigned o, n, d;
 	struct /* _RUNTIME_FUNCTION */ {
@@ -1727,10 +1726,10 @@ ST_FUNC void pe_add_unwind_data(TCCState *tcc_state, unsigned start, unsigned en
 		DWORD UnwindData;
 	} *p;
 
-	d = pe_add_uwwind_info(s1);
-	pd = s1->uw_pdata;
+	d = pe_add_uwwind_info(tcc_state);
+	pd = tcc_state->uw_pdata;
 	o = pd->data_offset;
-	p = section_ptr_add(pd, sizeof *p);
+	p = section_ptr_add(tcc_state, pd, sizeof *p);
 
 	/* record this function */
 	p->BeginAddress = start;
@@ -1739,7 +1738,7 @@ ST_FUNC void pe_add_unwind_data(TCCState *tcc_state, unsigned start, unsigned en
 
 	/* put relocations on it */
 	for (n = o + sizeof *p; o < n; o += sizeof p->BeginAddress)
-		put_elf_reloc(tcc_state, symtab_section, pd, o, R_X86_64_RELATIVE, s1->uw_sym);
+		put_elf_reloc(tcc_state, symtab_section, pd, o, R_X86_64_RELATIVE, tcc_state->uw_sym);
 }
 #endif
 /* ------------------------------------------------------------- */
@@ -1793,7 +1792,7 @@ static void pe_add_runtime(TCCState *s1, struct pe_info *pe)
 					break;
 			}
 			else if (pp == libs ? tcc_add_dll(s1, p, 0) : tcc_add_library(s1, p)) {
-				tcc_error_noabort("cannot find library: %s", p);
+				tcc_error_noabort(s1, "cannot find library: %s", p);
 				break;
 			}
 		}
@@ -1890,8 +1889,8 @@ ST_FUNC int pe_output_file(TCCState * s1, const char *filename)
 		if (s1->nb_errors)
 			ret = -1;
 		else
-			ret = pe_write(&pe);
-		tcc_free(pe.sec_info);
+			ret = pe_write(s1, &pe);
+		tcc_free(s1, pe.sec_info);
 	}
 	else {
 #ifdef TCC_IS_NATIVE

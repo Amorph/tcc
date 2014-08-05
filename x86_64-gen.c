@@ -156,59 +156,59 @@ static unsigned long func_sub_sp_offset;
 static int func_ret_sub;
 
 /* XXX: make it faster ? */
-void g(int c)
+void g(TCCState *tcc_state, int c)
 {
 	int ind1;
 	ind1 = ind + 1;
 	if (ind1 > cur_text_section->data_allocated)
-		section_realloc(cur_text_section, ind1);
+		section_realloc(tcc_state, cur_text_section, ind1);
 	cur_text_section->data[ind] = c;
 	ind = ind1;
 }
 
-void o(unsigned int c)
+void o(TCCState *tcc_state, unsigned int c)
 {
 	while (c) {
-		g(c);
+		g(tcc_state, c);
 		c = c >> 8;
 	}
 }
 
-void gen_le16(int v)
+void gen_le16(TCCState *tcc_state, int v)
 {
-	g(v);
-	g(v >> 8);
+	g(tcc_state, v);
+	g(tcc_state, v >> 8);
 }
 
-void gen_le32(int c)
+void gen_le32(TCCState *tcc_state, int c)
 {
-	g(c);
-	g(c >> 8);
-	g(c >> 16);
-	g(c >> 24);
+	g(tcc_state, c);
+	g(tcc_state, c >> 8);
+	g(tcc_state, c >> 16);
+	g(tcc_state, c >> 24);
 }
 
-void gen_le64(int64_t c)
+void gen_le64(TCCState *tcc_state, int64_t c)
 {
-	g(c);
-	g(c >> 8);
-	g(c >> 16);
-	g(c >> 24);
-	g(c >> 32);
-	g(c >> 40);
-	g(c >> 48);
-	g(c >> 56);
+	g(tcc_state, c);
+	g(tcc_state, c >> 8);
+	g(tcc_state, c >> 16);
+	g(tcc_state, c >> 24);
+	g(tcc_state, c >> 32);
+	g(tcc_state, c >> 40);
+	g(tcc_state, c >> 48);
+	g(tcc_state, c >> 56);
 }
 
-void orex(int ll, int r, int r2, int b)
+void orex(TCCState *tcc_state, int ll, int r, int r2, int b)
 {
 	if ((r & VT_VALMASK) >= VT_CONST)
 		r = 0;
 	if ((r2 & VT_VALMASK) >= VT_CONST)
 		r2 = 0;
 	if (ll || REX_BASE(r) || REX_BASE(r2))
-		o(0x40 | REX_BASE(r) | (REX_BASE(r2) << 2) | (ll << 3));
-	o(b);
+		o(tcc_state, 0x40 | REX_BASE(r) | (REX_BASE(r2) << 2) | (ll << 3));
+	o(tcc_state, b);
 }
 
 /* output a symbol and patch all calls to it */
@@ -240,14 +240,14 @@ static int is64_type(int t)
 }
 
 /* instruction + 4 bytes data. Return the address of the data */
-ST_FUNC int oad(int c, int s)
+ST_FUNC int oad(TCCState *tcc_state, int c, int s)
 {
 	int ind1;
 
-	o(c);
+	o(tcc_state, c);
 	ind1 = ind + 4;
 	if (ind1 > cur_text_section->data_allocated)
-		section_realloc(cur_text_section, ind1);
+		section_realloc(tcc_state, cur_text_section, ind1);
 	*(int *)(cur_text_section->data + ind) = s;
 	s = ind;
 	ind = ind1;
@@ -258,7 +258,7 @@ ST_FUNC void gen_addr32(TCCState *tcc_state, int r, Sym *sym, int c)
 {
 	if (r & VT_SYM)
 		greloc(tcc_state, cur_text_section, sym, ind, R_X86_64_32);
-	gen_le32(c);
+	gen_le32(tcc_state, c);
 }
 
 /* output constant with relocation if 'r & VT_SYM' is true */
@@ -266,7 +266,7 @@ ST_FUNC void gen_addr64(TCCState *tcc_state, int r, Sym *sym, int64_t c)
 {
 	if (r & VT_SYM)
 		greloc(tcc_state, cur_text_section, sym, ind, R_X86_64_64);
-	gen_le64(c);
+	gen_le64(tcc_state, c);
 }
 
 /* output constant with relocation if 'r & VT_SYM' is true */
@@ -274,7 +274,7 @@ ST_FUNC void gen_addrpc32(TCCState *tcc_state, int r, Sym *sym, int c)
 {
 	if (r & VT_SYM)
 		greloc(tcc_state, cur_text_section, sym, ind, R_X86_64_PC32);
-	gen_le32(c - 4);
+	gen_le32(tcc_state, c - 4);
 }
 
 /* output got address with relocation */
@@ -288,20 +288,20 @@ static void gen_gotpcrel(TCCState *tcc_state, int r, Sym *sym, int c)
 	rel = (ElfW(Rela) *)(sr->data + sr->data_offset - sizeof(ElfW(Rela)));
 	rel->r_addend = -4;
 #else
-	tcc_error("internal error: no GOT on PE: %s %x %x | %02x %02x %02x\n",
-		get_tok_str(sym->v, NULL), c, r,
+	tcc_error(tcc_state, "internal error: no GOT on PE: %s %x %x | %02x %02x %02x\n",
+		get_tok_str(tcc_state, sym->v, NULL), c, r,
 		cur_text_section->data[ind - 3],
 		cur_text_section->data[ind - 2],
 		cur_text_section->data[ind - 1]
 		);
 	greloc(tcc_state, cur_text_section, sym, ind, R_X86_64_PC32);
 #endif
-	gen_le32(0);
+	gen_le32(tcc_state, 0);
 	if (c) {
 		/* we use add c, %xxx for displacement */
-		orex(1, r, 0, 0x81);
-		o(0xc0 + REG_VALUE(r));
-		gen_le32(c);
+		orex(tcc_state, 1, r, 0, 0x81);
+		o(tcc_state, 0xc0 + REG_VALUE(r));
+		gen_le32(tcc_state, c);
 	}
 }
 
@@ -310,7 +310,7 @@ static void gen_modrm_impl(TCCState *tcc_state, int op_reg, int r, Sym *sym, int
 	op_reg = REG_VALUE(op_reg) << 3;
 	if ((r & VT_VALMASK) == VT_CONST) {
 		/* constant memory reference */
-		o(0x05 | op_reg);
+		o(tcc_state, 0x05 | op_reg);
 		if (is_got) {
 			gen_gotpcrel(tcc_state, r, sym, c);
 		}
@@ -322,24 +322,24 @@ static void gen_modrm_impl(TCCState *tcc_state, int op_reg, int r, Sym *sym, int
 		/* currently, we use only ebp as base */
 		if (c == (char)c) {
 			/* short reference */
-			o(0x45 | op_reg);
-			g(c);
+			o(tcc_state, 0x45 | op_reg);
+			g(tcc_state, c);
 		}
 		else {
-			oad(0x85 | op_reg, c);
+			oad(tcc_state, 0x85 | op_reg, c);
 		}
 	}
 	else if ((r & VT_VALMASK) >= TREG_MEM) {
 		if (c) {
-			g(0x80 | op_reg | REG_VALUE(r));
-			gen_le32(c);
+			g(tcc_state, 0x80 | op_reg | REG_VALUE(r));
+			gen_le32(tcc_state, c);
 		}
 		else {
-			g(0x00 | op_reg | REG_VALUE(r));
+			g(tcc_state, 0x00 | op_reg | REG_VALUE(r));
 		}
 	}
 	else {
-		g(0x00 | op_reg | REG_VALUE(r));
+		g(tcc_state, 0x00 | op_reg | REG_VALUE(r));
 	}
 }
 
@@ -356,7 +356,7 @@ static void gen_modrm64(TCCState *tcc_state, int opcode, int op_reg, int r, Sym 
 {
 	int is_got;
 	is_got = (op_reg & TREG_MEM) && !(sym->type.t & VT_STATIC);
-	orex(1, r, op_reg, opcode);
+	orex(tcc_state, 1, r, op_reg, opcode);
 	gen_modrm_impl(tcc_state, op_reg, r, sym, c, is_got);
 }
 
@@ -440,7 +440,7 @@ void load(TCCState* tcc_state, int r, SValue *sv)
 			gen_modrm64(tcc_state, b, r, fr, sv->sym, fc);
 		}
 		else {
-			orex(ll, fr, r, b);
+			orex(tcc_state, ll, fr, r, b);
 			gen_modrm(tcc_state, r, fr, sv->sym, fc);
 		}
 	}
@@ -448,96 +448,96 @@ void load(TCCState* tcc_state, int r, SValue *sv)
 		if (v == VT_CONST) {
 			if (fr & VT_SYM) {
 #ifdef TCC_TARGET_PE
-				orex(1, 0, r, 0x8d);
-				o(0x05 + REG_VALUE(r) * 8); /* lea xx(%rip), r */
+				orex(tcc_state, 1, 0, r, 0x8d);
+				o(tcc_state, 0x05 + REG_VALUE(r) * 8); /* lea xx(%rip), r */
 				gen_addrpc32(tcc_state, fr, sv->sym, fc);
 #else
 				if (sv->sym->type.t & VT_STATIC) {
-					orex(1, 0, r, 0x8d);
-					o(0x05 + REG_VALUE(r) * 8); /* lea xx(%rip), r */
+					orex(tcc_state, 1, 0, r, 0x8d);
+					o(tcc_state, 0x05 + REG_VALUE(r) * 8); /* lea xx(%rip), r */
 					gen_addrpc32(tcc_state, fr, sv->sym, fc);
 				}
 				else {
-					orex(1, 0, r, 0x8b);
-					o(0x05 + REG_VALUE(r) * 8); /* mov xx(%rip), r */
+					orex(tcc_state, 1, 0, r, 0x8b);
+					o(tcc_state, 0x05 + REG_VALUE(r) * 8); /* mov xx(%rip), r */
 					gen_gotpcrel(tcc_state, r, sv->sym, fc);
 				}
 #endif
 			}
 			else if (is64_type(ft)) {
-				orex(1, r, 0, 0xb8 + REG_VALUE(r)); /* mov $xx, r */
-				gen_le64(sv->c.ull);
+				orex(tcc_state, 1, r, 0, 0xb8 + REG_VALUE(r)); /* mov $xx, r */
+				gen_le64(tcc_state, sv->c.ull);
 			}
 			else {
-				orex(0, r, 0, 0xb8 + REG_VALUE(r)); /* mov $xx, r */
-				gen_le32(fc);
+				orex(tcc_state, 0, r, 0, 0xb8 + REG_VALUE(r)); /* mov $xx, r */
+				gen_le32(tcc_state, fc);
 			}
 		}
 		else if (v == VT_LOCAL) {
-			orex(1, 0, r, 0x8d); /* lea xxx(%ebp), r */
+			orex(tcc_state, 1, 0, r, 0x8d); /* lea xxx(%ebp), r */
 			gen_modrm(tcc_state, r, VT_LOCAL, sv->sym, fc);
 		}
 		else if (v == VT_CMP) {
-			orex(0, r, 0, 0);
+			orex(tcc_state, 0, r, 0, 0);
 			if ((fc & ~0x100) != TOK_NE)
-				oad(0xb8 + REG_VALUE(r), 0); /* mov $0, r */
+				oad(tcc_state, 0xb8 + REG_VALUE(r), 0); /* mov $0, r */
 			else
-				oad(0xb8 + REG_VALUE(r), 1); /* mov $1, r */
+				oad(tcc_state, 0xb8 + REG_VALUE(r), 1); /* mov $1, r */
 			if (fc & 0x100)
 			{
 				/* This was a float compare.  If the parity bit is
 				set the result was unordered, meaning false for everything
 				except TOK_NE, and true for TOK_NE.  */
 				fc &= ~0x100;
-				o(0x037a + (REX_BASE(r) << 8));
+				o(tcc_state, 0x037a + (REX_BASE(r) << 8));
 			}
-			orex(0, r, 0, 0x0f); /* setxx %br */
-			o(fc);
-			o(0xc0 + REG_VALUE(r));
+			orex(tcc_state, 0, r, 0, 0x0f); /* setxx %br */
+			o(tcc_state, fc);
+			o(tcc_state, 0xc0 + REG_VALUE(r));
 		}
 		else if (v == VT_JMP || v == VT_JMPI) {
 			t = v & 1;
-			orex(0, r, 0, 0);
-			oad(0xb8 + REG_VALUE(r), t); /* mov $1, r */
-			o(0x05eb + (REX_BASE(r) << 8)); /* jmp after */
+			orex(tcc_state, 0, r, 0, 0);
+			oad(tcc_state, 0xb8 + REG_VALUE(r), t); /* mov $1, r */
+			o(tcc_state, 0x05eb + (REX_BASE(r) << 8)); /* jmp after */
 			gsym(tcc_state, fc);
-			orex(0, r, 0, 0);
-			oad(0xb8 + REG_VALUE(r), t ^ 1); /* mov $0, r */
+			orex(tcc_state, 0, r, 0, 0);
+			oad(tcc_state, 0xb8 + REG_VALUE(r), t ^ 1); /* mov $0, r */
 		}
 		else if (v != r) {
 			if ((r >= TREG_XMM0) && (r <= TREG_XMM7)) {
 				if (v == TREG_ST0) {
 					/* gen_cvt_ftof(VT_DOUBLE); */
-					o(0xf0245cdd); /* fstpl -0x10(%rsp) */
+					o(tcc_state, 0xf0245cdd); /* fstpl -0x10(%rsp) */
 					/* movsd -0x10(%rsp),%xmmN */
-					o(0x100ff2);
-					o(0x44 + REG_VALUE(r) * 8); /* %xmmN */
-					o(0xf024);
+					o(tcc_state, 0x100ff2);
+					o(tcc_state, 0x44 + REG_VALUE(r) * 8); /* %xmmN */
+					o(tcc_state, 0xf024);
 				}
 				else {
 					assert((v >= TREG_XMM0) && (v <= TREG_XMM7));
 					if ((ft & VT_BTYPE) == VT_FLOAT) {
-						o(0x100ff3);
+						o(tcc_state, 0x100ff3);
 					}
 					else {
 						assert((ft & VT_BTYPE) == VT_DOUBLE);
-						o(0x100ff2);
+						o(tcc_state, 0x100ff2);
 					}
-					o(0xc0 + REG_VALUE(v) + REG_VALUE(r) * 8);
+					o(tcc_state, 0xc0 + REG_VALUE(v) + REG_VALUE(r) * 8);
 				}
 			}
 			else if (r == TREG_ST0) {
 				assert((v >= TREG_XMM0) && (v <= TREG_XMM7));
 				/* gen_cvt_ftof(VT_LDOUBLE); */
 				/* movsd %xmmN,-0x10(%rsp) */
-				o(0x110ff2);
-				o(0x44 + REG_VALUE(r) * 8); /* %xmmN */
-				o(0xf024);
-				o(0xf02444dd); /* fldl -0x10(%rsp) */
+				o(tcc_state, 0x110ff2);
+				o(tcc_state, 0x44 + REG_VALUE(r) * 8); /* %xmmN */
+				o(tcc_state, 0xf024);
+				o(tcc_state, 0xf02444dd); /* fldl -0x10(%rsp) */
 			}
 			else {
-				orex(1, r, v, 0x89);
-				o(0xc0 + REG_VALUE(r) + REG_VALUE(v) * 8); /* mov v, r */
+				orex(tcc_state, 1, r, v, 0x89);
+				o(tcc_state, 0xc0 + REG_VALUE(r) + REG_VALUE(v) * 8); /* mov v, r */
 			}
 		}
 	}
@@ -565,7 +565,7 @@ void store(TCCState *tcc_state, int r, SValue *v)
 	/* we need to access the variable via got */
 	if (fr == VT_CONST && (v->r & VT_SYM)) {
 		/* mov xx(%rip), %r11 */
-		o(0x1d8b4c);
+		o(tcc_state, 0x1d8b4c);
 		gen_gotpcrel(tcc_state, TREG_R11, v->sym, v->c.ul);
 		pic = is64_type(bt) ? 0x49 : 0x41;
 	}
@@ -573,39 +573,39 @@ void store(TCCState *tcc_state, int r, SValue *v)
 
 	/* XXX: incorrect if float reg to reg */
 	if (bt == VT_FLOAT) {
-		o(0x66);
-		o(pic);
-		o(0x7e0f); /* movd */
+		o(tcc_state, 0x66);
+		o(tcc_state, pic);
+		o(tcc_state, 0x7e0f); /* movd */
 		r = REG_VALUE(r);
 	}
 	else if (bt == VT_DOUBLE) {
-		o(0x66);
-		o(pic);
-		o(0xd60f); /* movq */
+		o(tcc_state, 0x66);
+		o(tcc_state, pic);
+		o(tcc_state, 0xd60f); /* movq */
 		r = REG_VALUE(r);
 	}
 	else if (bt == VT_LDOUBLE) {
-		o(0xc0d9); /* fld %st(0) */
-		o(pic);
-		o(0xdb); /* fstpt */
+		o(tcc_state, 0xc0d9); /* fld %st(0) */
+		o(tcc_state, pic);
+		o(tcc_state, 0xdb); /* fstpt */
 		r = 7;
 	}
 	else {
 		if (bt == VT_SHORT)
-			o(0x66);
-		o(pic);
+			o(tcc_state, 0x66);
+		o(tcc_state, pic);
 		if (bt == VT_BYTE || bt == VT_BOOL)
-			orex(0, 0, r, 0x88);
+			orex(tcc_state, 0, 0, r, 0x88);
 		else if (is64_type(bt))
 			op64 = 0x89;
 		else
-			orex(0, 0, r, 0x89);
+			orex(tcc_state, 0, 0, r, 0x89);
 	}
 	if (pic) {
 		/* xxx r, (%r11) where xxx is mov, movq, fld, or etc */
 		if (op64)
-			o(op64);
-		o(3 + (r << 3));
+			o(tcc_state, op64);
+		o(tcc_state, 3 + (r << 3));
 	}
 	else if (op64) {
 		if (fr == VT_CONST || fr == VT_LOCAL || (v->r & VT_LVAL)) {
@@ -614,7 +614,7 @@ void store(TCCState *tcc_state, int r, SValue *v)
 		else if (fr != r) {
 			/* XXX: don't we really come here? */
 			abort();
-			o(0xc0 + fr + r * 8); /* mov r, fr */
+			o(tcc_state, 0xc0 + fr + r * 8); /* mov r, fr */
 		}
 	}
 	else {
@@ -624,7 +624,7 @@ void store(TCCState *tcc_state, int r, SValue *v)
 		else if (fr != r) {
 			/* XXX: don't we really come here? */
 			abort();
-			o(0xc0 + fr + r * 8); /* mov r, fr */
+			o(tcc_state, 0xc0 + fr + r * 8); /* mov r, fr */
 		}
 	}
 }
@@ -648,15 +648,15 @@ static void gcall_or_jmp(TCCState *tcc_state, int is_jmp)
 			put_elf_reloc(tcc_state, symtab_section, cur_text_section,
 				ind + 1, R_X86_64_PC32, 0);
 		}
-		oad(0xe8 + is_jmp, vtop->c.ul - 4); /* call/jmp im */
+		oad(tcc_state, 0xe8 + is_jmp, vtop->c.ul - 4); /* call/jmp im */
 	}
 	else {
 		/* otherwise, indirect call */
 		r = TREG_R11;
 		load(tcc_state, r, vtop);
-		o(0x41); /* REX */
-		o(0xff); /* call/jmp *r */
-		o(0xd0 + REG_VALUE(r) + (is_jmp << 4));
+		o(tcc_state, 0x41); /* REX */
+		o(tcc_state, 0xff); /* call/jmp *r */
+		o(tcc_state, 0xd0 + REG_VALUE(r) + (is_jmp << 4));
 	}
 }
 
@@ -683,22 +683,22 @@ static int func_scratch;
 all the parameters in call order. This functions pops all the
 parameters and the function address. */
 
-void gen_offs_sp(int b, int r, int d)
+void gen_offs_sp(TCCState *tcc_state, int b, int r, int d)
 {
-	orex(1, 0, r & 0x100 ? 0 : r, b);
+	orex(tcc_state, 1, 0, r & 0x100 ? 0 : r, b);
 	if (d == (char)d) {
-		o(0x2444 | (REG_VALUE(r) << 3));
-		g(d);
+		o(tcc_state, 0x2444 | (REG_VALUE(r) << 3));
+		g(tcc_state, d);
 	}
 	else {
-		o(0x2484 | (REG_VALUE(r) << 3));
-		gen_le32(d);
+		o(tcc_state, 0x2484 | (REG_VALUE(r) << 3));
+		gen_le32(tcc_state, d);
 	}
 }
 
 /* Return the number of registers needed to return the struct, or 0 if
 returning via struct pointer. */
-ST_FUNC int gfunc_sret(CType *vt, int variadic, CType *ret, int *ret_align)
+ST_FUNC int gfunc_sret(TCCState *tcc_state, CType *vt, int variadic, CType *ret, int *ret_align)
 {
 	int size, align;
 	*ret_align = 1; // Never have to re-align return values for x86-64
@@ -731,7 +731,7 @@ static int is_sse_float(int t) {
 	return bt == VT_DOUBLE || bt == VT_FLOAT;
 }
 
-int gfunc_arg_size(CType *type) {
+int gfunc_arg_size(TCCState *tcc_state, CType *type) {
 	int align;
 	if (type->t & (VT_ARRAY | VT_BITFIELD))
 		return 8;
@@ -756,7 +756,7 @@ void gfunc_call(TCCState *tcc_state, int nb_args)
 		--arg;
 		sv = &vtop[-i];
 		bt = (sv->type.t & VT_BTYPE);
-		size = gfunc_arg_size(&sv->type);
+		size = gfunc_arg_size(tcc_state, &sv->type);
 
 		if (size <= 8)
 			continue; /* arguments smaller than 8 bytes passed in registers or on stack */
@@ -766,7 +766,7 @@ void gfunc_call(TCCState *tcc_state, int nb_args)
 			size = (size + 15) & ~15;
 			/* generate structure store */
 			r = get_reg(tcc_state, RC_INT);
-			gen_offs_sp(0x8d, r, struct_size);
+			gen_offs_sp(tcc_state, 0x8d, r, struct_size);
 			struct_size += size;
 
 			/* generate memcpy call */
@@ -777,7 +777,7 @@ void gfunc_call(TCCState *tcc_state, int nb_args)
 		}
 		else if (bt == VT_LDOUBLE) {
 			gv(tcc_state, RC_ST0);
-			gen_offs_sp(0xdb, 0x107, struct_size);
+			gen_offs_sp(tcc_state, 0xdb, 0x107, struct_size);
 			struct_size += 16;
 		}
 	}
@@ -792,18 +792,18 @@ void gfunc_call(TCCState *tcc_state, int nb_args)
 		--arg;
 		bt = (vtop->type.t & VT_BTYPE);
 
-		size = gfunc_arg_size(&vtop->type);
+		size = gfunc_arg_size(tcc_state, &vtop->type);
 		if (size > 8) {
 			/* align to stack align size */
 			size = (size + 15) & ~15;
 			if (arg >= REGN) {
 				d = get_reg(tcc_state, RC_INT);
-				gen_offs_sp(0x8d, d, struct_size);
-				gen_offs_sp(0x89, d, arg * 8);
+				gen_offs_sp(tcc_state, 0x8d, d, struct_size);
+				gen_offs_sp(tcc_state, 0x89, d, arg * 8);
 			}
 			else {
 				d = arg_prepare_reg(arg);
-				gen_offs_sp(0x8d, d, struct_size);
+				gen_offs_sp(tcc_state, 0x8d, d, struct_size);
 			}
 			struct_size += size;
 		}
@@ -812,17 +812,17 @@ void gfunc_call(TCCState *tcc_state, int nb_args)
 				gv(tcc_state, RC_XMM0); /* only use one float register */
 				if (arg >= REGN) {
 					/* movq %xmm0, j*8(%rsp) */
-					gen_offs_sp(0xd60f66, 0x100, arg * 8);
+					gen_offs_sp(tcc_state, 0xd60f66, 0x100, arg * 8);
 				}
 				else {
 					/* movaps %xmm0, %xmmN */
-					o(0x280f);
-					o(0xc0 + (arg << 3));
+					o(tcc_state, 0x280f);
+					o(tcc_state, 0xc0 + (arg << 3));
 					d = arg_prepare_reg(arg);
 					/* mov %xmm0, %rxx */
-					o(0x66);
-					orex(1, d, 0, 0x7e0f);
-					o(0xc0 + REG_VALUE(d));
+					o(tcc_state, 0x66);
+					orex(tcc_state, 1, d, 0, 0x7e0f);
+					o(tcc_state, 0xc0 + REG_VALUE(d));
 				}
 			}
 			else {
@@ -834,12 +834,12 @@ void gfunc_call(TCCState *tcc_state, int nb_args)
 
 				r = gv(tcc_state, RC_INT);
 				if (arg >= REGN) {
-					gen_offs_sp(0x89, r, arg * 8);
+					gen_offs_sp(tcc_state, 0x89, r, arg * 8);
 				}
 				else {
 					d = arg_prepare_reg(arg);
-					orex(1, d, r, 0x89); /* mov */
-					o(0xc0 + REG_VALUE(r) * 8 + REG_VALUE(d));
+					orex(tcc_state, 1, d, r, 0x89); /* mov */
+					o(tcc_state, 0xc0 + REG_VALUE(r) * 8 + REG_VALUE(d));
 				}
 			}
 		}
@@ -849,9 +849,9 @@ void gfunc_call(TCCState *tcc_state, int nb_args)
 
 	/* Copy R10 and R11 into RCX and RDX, respectively */
 	if (nb_args > 0) {
-		o(0xd1894c); /* mov %r10, %rcx */
+		o(tcc_state, 0xd1894c); /* mov %r10, %rcx */
 		if (nb_args > 1) {
-			o(0xda894c); /* mov %r11, %rdx */
+			o(tcc_state, 0xda894c); /* mov %r11, %rdx */
 		}
 	}
 
@@ -884,7 +884,7 @@ void gfunc_prolog(TCCState *tcc_state, CType *func_type)
 	implicit pointer parameter */
 	func_vt = sym->type;
 	func_var = (sym->c == FUNC_ELLIPSIS);
-	size = gfunc_arg_size(&func_vt);
+	size = gfunc_arg_size(tcc_state, &func_vt);
 	if (size > 8) {
 		gen_modrm64(tcc_state, 0x89, arg_regs[reg_param_index], VT_LOCAL, NULL, addr);
 		func_vc = addr;
@@ -896,25 +896,25 @@ void gfunc_prolog(TCCState *tcc_state, CType *func_type)
 	while ((sym = sym->next) != NULL) {
 		type = &sym->type;
 		bt = type->t & VT_BTYPE;
-		size = gfunc_arg_size(type);
+		size = gfunc_arg_size(tcc_state, type);
 		if (size > 8) {
 			if (reg_param_index < REGN) {
 				gen_modrm64(tcc_state, 0x89, arg_regs[reg_param_index], VT_LOCAL, NULL, addr);
 			}
-			sym_push(sym->v & ~SYM_FIELD, type, VT_LOCAL | VT_LVAL | VT_REF, addr);
+			sym_push(tcc_state, sym->v & ~SYM_FIELD, type, VT_LOCAL | VT_LVAL | VT_REF, addr);
 		}
 		else {
 			if (reg_param_index < REGN) {
 				/* save arguments passed by register */
 				if ((bt == VT_FLOAT) || (bt == VT_DOUBLE)) {
-					o(0xd60f66); /* movq */
+					o(tcc_state, 0xd60f66); /* movq */
 					gen_modrm(tcc_state, reg_param_index, VT_LOCAL, NULL, addr);
 				}
 				else {
 					gen_modrm64(tcc_state, 0x89, arg_regs[reg_param_index], VT_LOCAL, NULL, addr);
 				}
 			}
-			sym_push(sym->v & ~SYM_FIELD, type, VT_LOCAL | VT_LVAL, addr);
+			sym_push(tcc_state, sym->v & ~SYM_FIELD, type, VT_LOCAL | VT_LVAL, addr);
 		}
 		addr += 8;
 		reg_param_index++;
@@ -934,14 +934,14 @@ void gfunc_epilog(TCCState* tcc_state)
 {
 	int v, saved_ind;
 
-	o(0xc9); /* leave */
+	o(tcc_state, 0xc9); /* leave */
 	if (func_ret_sub == 0) {
-		o(0xc3); /* ret */
+		o(tcc_state, 0xc3); /* ret */
 	}
 	else {
-		o(0xc2); /* ret n */
-		g(func_ret_sub);
-		g(func_ret_sub >> 8);
+		o(tcc_state, 0xc2); /* ret n */
+		g(tcc_state, func_ret_sub);
+		g(tcc_state, func_ret_sub >> 8);
 	}
 
 	saved_ind = ind;
@@ -950,16 +950,16 @@ void gfunc_epilog(TCCState* tcc_state)
 	v = (func_scratch + -loc + 15) & -16;
 
 	if (v >= 4096) {
-		Sym *sym = external_global_sym(TOK___chkstk, &func_old_type, 0);
-		oad(0xb8, v); /* mov stacksize, %eax */
-		oad(0xe8, -4); /* call __chkstk, (does the stackframe too) */
+		Sym *sym = external_global_sym(tcc_state, TOK___chkstk, &func_old_type, 0);
+		oad(tcc_state, 0xb8, v); /* mov stacksize, %eax */
+		oad(tcc_state, 0xe8, -4); /* call __chkstk, (does the stackframe too) */
 		greloc(tcc_state, cur_text_section, sym, ind - 4, R_X86_64_PC32);
-		o(0x90); /* fill for FUNC_PROLOG_SIZE = 11 bytes */
+		o(tcc_state, 0x90); /* fill for FUNC_PROLOG_SIZE = 11 bytes */
 	}
 	else {
-		o(0xe5894855);  /* push %rbp, mov %rsp, %rbp */
-		o(0xec8148);  /* sub rsp, stacksize */
-		gen_le32(v);
+		o(tcc_state, 0xe5894855);  /* push %rbp, mov %rsp, %rbp */
+		o(tcc_state, 0xec8148);  /* sub rsp, stacksize */
+		gen_le32(tcc_state, v);
 	}
 
 	cur_text_section->data_offset = saved_ind;
@@ -969,14 +969,14 @@ void gfunc_epilog(TCCState* tcc_state)
 
 #else
 
-static void gadd_sp(int val)
+static void gadd_sp(TCCState *tcc_state, int val)
 {
 	if (val == (char)val) {
-		o(0xc48348);
-		g(val);
+		o(tcc_state, 0xc48348);
+		g(tcc_state, val);
 	}
 	else {
-		oad(0xc48148, val); /* add $xxx, %rsp */
+		oad(tcc_state, 0xc48148, val); /* add $xxx, %rsp */
 	}
 }
 
@@ -1124,7 +1124,7 @@ ST_FUNC int classify_x86_64_va_arg(CType *ty)
 
 /* Return the number of registers needed to return the struct, or 0 if
 returning via struct pointer. */
-ST_FUNC int gfunc_sret(CType *vt, int variadic, CType *ret, int *ret_align)
+ST_FUNC int gfunc_sret(TCCState *tcc_state, CType *vt, int variadic, CType *ret, int *ret_align)
 {
 	int size, align, reg_count;
 	*ret_align = 1; // Never have to re-align return values for x86-64
@@ -1215,8 +1215,8 @@ void gfunc_call(TCCState *tcc_state, int nb_args)
 				gv(tcc_state, RC_INT);
 
 			stack_adjust = 16 - stack_adjust;
-			o(0x48);
-			oad(0xec81, stack_adjust); /* sub $xxx, %rsp */
+			o(tcc_state, 0x48);
+			oad(tcc_state, 0xec81, stack_adjust); /* sub $xxx, %rsp */
 			args_size += stack_adjust;
 		}
 
@@ -1249,12 +1249,12 @@ void gfunc_call(TCCState *tcc_state, int nb_args)
 
 				if (arg_stored) {
 					/* allocate the necessary size on stack */
-					o(0x48);
-					oad(0xec81, size); /* sub $xxx, %rsp */
+					o(tcc_state, 0x48);
+					oad(tcc_state, 0xec81, size); /* sub $xxx, %rsp */
 					/* generate structure store */
 					r = get_reg(tcc_state, RC_INT);
-					orex(1, r, 0, 0x89); /* mov %rsp, r */
-					o(0xe0 + REG_VALUE(r));
+					orex(tcc_state, 1, r, 0, 0x89); /* mov %rsp, r */
+					o(tcc_state, 0xe0 + REG_VALUE(r));
 					vset(tcc_state, &vtop->type, r | VT_LVAL, 0);
 					vswap(tcc_state);
 					vstore(tcc_state);
@@ -1272,11 +1272,11 @@ void gfunc_call(TCCState *tcc_state, int nb_args)
 				if (sse_reg > 8) {
 					--sse_reg;
 					r = gv(tcc_state, RC_FLOAT);
-					o(0x50); /* push $rax */
+					o(tcc_state, 0x50); /* push $rax */
 					/* movq %xmmN, (%rsp) */
-					o(0xd60f66);
-					o(0x04 + REG_VALUE(r) * 8);
-					o(0x24);
+					o(tcc_state, 0xd60f66);
+					o(tcc_state, 0x04 + REG_VALUE(r) * 8);
+					o(tcc_state, 0x24);
 					args_size += size;
 				}
 				else {
@@ -1291,7 +1291,7 @@ void gfunc_call(TCCState *tcc_state, int nb_args)
 				if (gen_reg > REGN) {
 					--gen_reg;
 					r = gv(tcc_state, RC_INT);
-					orex(0, r, 0, 0x50 + REG_VALUE(r)); /* push r */
+					orex(tcc_state, 0, r, 0, 0x50 + REG_VALUE(r)); /* push r */
 					args_size += size;
 				}
 				else {
@@ -1329,22 +1329,22 @@ void gfunc_call(TCCState *tcc_state, int nb_args)
 
 			if ((vtop->type.t & VT_BTYPE) == VT_LDOUBLE) {
 				gv(tcc_state, RC_ST0);
-				oad(0xec8148, size); /* sub $xxx, %rsp */
-				o(0x7cdb); /* fstpt 0(%rsp) */
-				g(0x24);
-				g(0x00);
+				oad(tcc_state, 0xec8148, size); /* sub $xxx, %rsp */
+				o(tcc_state, 0x7cdb); /* fstpt 0(%rsp) */
+				g(tcc_state, 0x24);
+				g(tcc_state, 0x00);
 				args_size += size;
 			}
 			else {
 				assert(mode == x86_64_mode_memory);
 
 				/* allocate the necessary size on stack */
-				o(0x48);
-				oad(0xec81, size); /* sub $xxx, %rsp */
+				o(tcc_state, 0x48);
+				oad(tcc_state, 0xec81, size); /* sub $xxx, %rsp */
 				/* generate structure store */
 				r = get_reg(tcc_state, RC_INT);
-				orex(1, r, 0, 0x89); /* mov %rsp, r */
-				o(0xe0 + REG_VALUE(r));
+				orex(tcc_state, 1, r, 0, 0x89); /* mov %rsp, r */
+				o(tcc_state, 0xe0 + REG_VALUE(r));
 				vset(tcc_state, &vtop->type, r | VT_LVAL, 0);
 				vswap(tcc_state);
 				vstore(tcc_state);
@@ -1375,11 +1375,11 @@ void gfunc_call(TCCState *tcc_state, int nb_args)
 				gv(tcc_state, RC_FRET); /* Use pair load into xmm0 & xmm1 */
 				if (sse_reg) { /* avoid redundant movaps %xmm0, %xmm0 */
 					/* movaps %xmm0, %xmmN */
-					o(0x280f);
-					o(0xc0 + (sse_reg << 3));
+					o(tcc_state, 0x280f);
+					o(tcc_state, 0xc0 + (sse_reg << 3));
 					/* movaps %xmm1, %xmmN */
-					o(0x280f);
-					o(0xc1 + ((sse_reg + 1) << 3));
+					o(tcc_state, 0x280f);
+					o(tcc_state, 0xc1 + ((sse_reg + 1) << 3));
 				}
 			}
 			else {
@@ -1395,12 +1395,12 @@ void gfunc_call(TCCState *tcc_state, int nb_args)
 			gen_reg -= reg_count;
 			r = gv(tcc_state, RC_INT);
 			int d = arg_prepare_reg(gen_reg);
-			orex(1, d, r, 0x89); /* mov */
-			o(0xc0 + REG_VALUE(r) * 8 + REG_VALUE(d));
+			orex(tcc_state, 1, d, r, 0x89); /* mov */
+			o(tcc_state, 0xc0 + REG_VALUE(r) * 8 + REG_VALUE(d));
 			if (reg_count == 2) {
 				d = arg_prepare_reg(gen_reg + 1);
-				orex(1, d, vtop->r2, 0x89); /* mov */
-				o(0xc0 + REG_VALUE(vtop->r2) * 8 + REG_VALUE(d));
+				orex(tcc_state, 1, d, vtop->r2, 0x89); /* mov */
+				o(tcc_state, 0xc0 + REG_VALUE(vtop->r2) * 8 + REG_VALUE(d));
 			}
 		}
 		vtop--;
@@ -1416,16 +1416,16 @@ void gfunc_call(TCCState *tcc_state, int nb_args)
 
 	/* Copy R10 and R11 into RDX and RCX, respectively */
 	if (nb_reg_args > 2) {
-		o(0xd2894c); /* mov %r10, %rdx */
+		o(tcc_state, 0xd2894c); /* mov %r10, %rdx */
 		if (nb_reg_args > 3) {
-			o(0xd9894c); /* mov %r11, %rcx */
+			o(tcc_state, 0xd9894c); /* mov %r11, %rcx */
 		}
 	}
 
-	oad(0xb8, nb_sse_args < 8 ? nb_sse_args : 8); /* mov nb_sse_args, %eax */
+	oad(tcc_state, 0xb8, nb_sse_args < 8 ? nb_sse_args : 8); /* mov nb_sse_args, %eax */
 	gcall_or_jmp(tcc_state, 0);
 	if (args_size)
-		gadd_sp(args_size);
+		gadd_sp(tcc_state, args_size);
 	vtop--;
 }
 
@@ -1493,24 +1493,24 @@ void gfunc_prolog(TCCState *tcc_state, CType *func_type)
 
 		loc -= 16;
 		/* movl $0x????????, -0x10(%rbp) */
-		o(0xf045c7);
-		gen_le32(seen_reg_num * 8);
+		o(tcc_state, 0xf045c7);
+		gen_le32(tcc_state, seen_reg_num * 8);
 		/* movl $0x????????, -0xc(%rbp) */
-		o(0xf445c7);
-		gen_le32(seen_sse_num * 16 + 48);
+		o(tcc_state, 0xf445c7);
+		gen_le32(tcc_state, seen_sse_num * 16 + 48);
 		/* movl $0x????????, -0x8(%rbp) */
-		o(0xf845c7);
-		gen_le32(seen_stack_size);
+		o(tcc_state, 0xf845c7);
+		gen_le32(tcc_state, seen_stack_size);
 
 		/* save all register passing arguments */
 		for (i = 0; i < 8; i++) {
 			loc -= 16;
-			o(0xd60f66); /* movq */
+			o(tcc_state, 0xd60f66); /* movq */
 			gen_modrm(tcc_state, 7 - i, VT_LOCAL, NULL, loc);
 			/* movq $0, loc+8(%rbp) */
-			o(0x85c748);
-			gen_le32(loc + 8);
-			gen_le32(0);
+			o(tcc_state, 0x85c748);
+			gen_le32(tcc_state, loc + 8);
+			gen_le32(tcc_state, 0);
 		}
 		for (i = 0; i < REGN; i++) {
 			push_arg_reg(tcc_state, REGN - 1 - i);
@@ -1541,7 +1541,7 @@ void gfunc_prolog(TCCState *tcc_state, CType *func_type)
 				loc -= reg_count * 8;
 				param_addr = loc;
 				for (i = 0; i < reg_count; ++i) {
-					o(0xd60f66); /* movq */
+					o(tcc_state, 0xd60f66); /* movq */
 					gen_modrm(tcc_state, sse_param_index, VT_LOCAL, NULL, param_addr + i * 8);
 					++sse_param_index;
 				}
@@ -1581,7 +1581,7 @@ void gfunc_prolog(TCCState *tcc_state, CType *func_type)
 		}
 		default: break; /* nothing to be done for x86_64_mode_none */
 		}
-		sym_push(sym->v & ~SYM_FIELD, type,
+		sym_push(tcc_state, sym->v & ~SYM_FIELD, type,
 			VT_LOCAL | VT_LVAL, param_addr);
 	}
 }
@@ -1591,22 +1591,22 @@ void gfunc_epilog(TCCState *tcc_state)
 {
 	int v, saved_ind;
 
-	o(0xc9); /* leave */
+	o(tcc_state, 0xc9); /* leave */
 	if (func_ret_sub == 0) {
-		o(0xc3); /* ret */
+		o(tcc_state, 0xc3); /* ret */
 	}
 	else {
-		o(0xc2); /* ret n */
-		g(func_ret_sub);
-		g(func_ret_sub >> 8);
+		o(tcc_state, 0xc2); /* ret n */
+		g(tcc_state, func_ret_sub);
+		g(tcc_state, func_ret_sub >> 8);
 	}
 	/* align local size to word & save local variables */
 	v = (-loc + 15) & -16;
 	saved_ind = ind;
 	ind = func_sub_sp_offset - FUNC_PROLOG_SIZE;
-	o(0xe5894855);  /* push %rbp, mov %rsp, %rbp */
-	o(0xec8148);  /* sub rsp, stacksize */
-	gen_le32(v);
+	o(tcc_state, 0xe5894855);  /* push %rbp, mov %rsp, %rbp */
+	o(tcc_state, 0xec8148);  /* sub rsp, stacksize */
+	gen_le32(tcc_state, v);
 	ind = saved_ind;
 }
 
@@ -1615,7 +1615,7 @@ void gfunc_epilog(TCCState *tcc_state)
 /* generate a jump to a label */
 int gjmp(TCCState *tcc_state, int t)
 {
-	return psym(0xe9, t);
+	return psym(tcc_state, 0xe9, t);
 }
 
 /* generate a jump to a fixed address */
@@ -1624,11 +1624,11 @@ void gjmp_addr(TCCState *tcc_state, int a)
 	int r;
 	r = a - ind - 2;
 	if (r == (char)r) {
-		g(0xeb);
-		g(r);
+		g(tcc_state, 0xeb);
+		g(tcc_state, r);
 	}
 	else {
-		oad(0xe9, a - ind - 5);
+		oad(tcc_state, 0xe9, a - ind - 5);
 	}
 }
 
@@ -1651,15 +1651,15 @@ int gtst(TCCState *tcc_state, int inv, int t)
 			otherwise if unordered we don't want to jump.  */
 			vtop->c.i &= ~0x100;
 			if (!inv == (vtop->c.i != TOK_NE))
-				o(0x067a);  /* jp +6 */
+				o(tcc_state, 0x067a);  /* jp +6 */
 			else
 			{
-				g(0x0f);
-				t = psym(0x8a, t); /* jp t */
+				g(tcc_state, 0x0f);
+				t = psym(tcc_state, 0x8a, t); /* jp t */
 			}
 		}
-		g(0x0f);
-		t = psym((vtop->c.i - 16) ^ inv, t);
+		g(tcc_state, 0x0f);
+		t = psym(tcc_state, (vtop->c.i - 16) ^ inv, t);
 	}
 	else { /* VT_JMP || VT_JMPI */
 		/* && or || optimization */
@@ -1703,21 +1703,21 @@ void gen_opi(TCCState *tcc_state, int op)
 			c = vtop->c.i;
 			if (c == (char)c) {
 				/* XXX: generate inc and dec for smaller code ? */
-				orex(ll, r, 0, 0x83);
-				o(0xc0 | (opc << 3) | REG_VALUE(r));
-				g(c);
+				orex(tcc_state, ll, r, 0, 0x83);
+				o(tcc_state, 0xc0 | (opc << 3) | REG_VALUE(r));
+				g(tcc_state, c);
 			}
 			else {
-				orex(ll, r, 0, 0x81);
-				oad(0xc0 | (opc << 3) | REG_VALUE(r), c);
+				orex(tcc_state, ll, r, 0, 0x81);
+				oad(tcc_state, 0xc0 | (opc << 3) | REG_VALUE(r), c);
 			}
 		}
 		else {
 			gv2(tcc_state, RC_INT, RC_INT);
 			r = vtop[-1].r;
 			fr = vtop[0].r;
-			orex(ll, r, fr, (opc << 3) | 0x01);
-			o(0xc0 + REG_VALUE(r) + REG_VALUE(fr) * 8);
+			orex(tcc_state, ll, r, fr, (opc << 3) | 0x01);
+			o(tcc_state, 0xc0 + REG_VALUE(r) + REG_VALUE(fr) * 8);
 		}
 		vtop--;
 		if (op >= TOK_ULT && op <= TOK_GT) {
@@ -1748,8 +1748,8 @@ void gen_opi(TCCState *tcc_state, int op)
 		gv2(tcc_state, RC_INT, RC_INT);
 		r = vtop[-1].r;
 		fr = vtop[0].r;
-		orex(ll, fr, r, 0xaf0f); /* imul fr, r */
-		o(0xc0 + REG_VALUE(fr) + REG_VALUE(r) * 8);
+		orex(tcc_state, ll, fr, r, 0xaf0f); /* imul fr, r */
+		o(tcc_state, 0xc0 + REG_VALUE(fr) + REG_VALUE(r) * 8);
 		vtop--;
 		break;
 	case TOK_SHL:
@@ -1767,16 +1767,16 @@ void gen_opi(TCCState *tcc_state, int op)
 			vswap(tcc_state);
 			r = gv(tcc_state, RC_INT);
 			vswap(tcc_state);
-			orex(ll, r, 0, 0xc1); /* shl/shr/sar $xxx, r */
-			o(opc | REG_VALUE(r));
-			g(vtop->c.i & (ll ? 63 : 31));
+			orex(tcc_state, ll, r, 0, 0xc1); /* shl/shr/sar $xxx, r */
+			o(tcc_state, opc | REG_VALUE(r));
+			g(tcc_state, vtop->c.i & (ll ? 63 : 31));
 		}
 		else {
 			/* we generate the shift in ecx */
 			gv2(tcc_state, RC_INT, RC_RCX);
 			r = vtop[-1].r;
-			orex(ll, r, 0, 0xd3); /* shl/shr/sar %cl, r */
-			o(opc | REG_VALUE(r));
+			orex(tcc_state, ll, r, 0, 0xd3); /* shl/shr/sar %cl, r */
+			o(tcc_state, opc | REG_VALUE(r));
 		}
 		vtop--;
 		break;
@@ -1796,9 +1796,9 @@ void gen_opi(TCCState *tcc_state, int op)
 		fr = vtop[0].r;
 		vtop--;
 		save_reg(tcc_state, TREG_RDX);
-		orex(ll, 0, 0, uu ? 0xd231 : 0x99); /* xor %edx,%edx : cqto */
-		orex(ll, fr, 0, 0xf7); /* div fr, %eax */
-		o((uu ? 0xf0 : 0xf8) + REG_VALUE(fr));
+		orex(tcc_state, ll, 0, 0, uu ? 0xd231 : 0x99); /* xor %edx,%edx : cqto */
+		orex(tcc_state, ll, fr, 0, 0xf7); /* div fr, %eax */
+		o(tcc_state, (uu ? 0xf0 : 0xf8) + REG_VALUE(fr));
 		if (op == '%' || op == TOK_UMOD)
 			r = TREG_RDX;
 		else
@@ -1858,27 +1858,27 @@ void gen_opf(TCCState *tcc_state, int op)
 			else if (op == TOK_EQ || op == TOK_NE)
 				swapped = 0;
 			if (swapped)
-				o(0xc9d9); /* fxch %st(1) */
+				o(tcc_state, 0xc9d9); /* fxch %st(1) */
 			if (op == TOK_EQ || op == TOK_NE)
-				o(0xe9da); /* fucompp */
+				o(tcc_state, 0xe9da); /* fucompp */
 			else
-				o(0xd9de); /* fcompp */
-			o(0xe0df); /* fnstsw %ax */
+				o(tcc_state, 0xd9de); /* fcompp */
+			o(tcc_state, 0xe0df); /* fnstsw %ax */
 			if (op == TOK_EQ) {
-				o(0x45e480); /* and $0x45, %ah */
-				o(0x40fC80); /* cmp $0x40, %ah */
+				o(tcc_state, 0x45e480); /* and $0x45, %ah */
+				o(tcc_state, 0x40fC80); /* cmp $0x40, %ah */
 			}
 			else if (op == TOK_NE) {
-				o(0x45e480); /* and $0x45, %ah */
-				o(0x40f480); /* xor $0x40, %ah */
+				o(tcc_state, 0x45e480); /* and $0x45, %ah */
+				o(tcc_state, 0x40f480); /* xor $0x40, %ah */
 				op = TOK_NE;
 			}
 			else if (op == TOK_GE || op == TOK_LE) {
-				o(0x05c4f6); /* test $0x05, %ah */
+				o(tcc_state, 0x05c4f6); /* test $0x05, %ah */
 				op = TOK_EQ;
 			}
 			else {
-				o(0x45c4f6); /* test $0x45, %ah */
+				o(tcc_state, 0x45c4f6); /* test $0x45, %ah */
 				op = TOK_EQ;
 			}
 			vtop--;
@@ -1911,8 +1911,8 @@ void gen_opf(TCCState *tcc_state, int op)
 			}
 			ft = vtop->type.t;
 			fc = vtop->c.ul;
-			o(0xde); /* fxxxp %st, %st(1) */
-			o(0xc1 + (a << 3));
+			o(tcc_state, 0xde); /* fxxxp %st, %st(1) */
+			o(tcc_state, 0xc1 + (a << 3));
 			vtop--;
 		}
 	}
@@ -1952,17 +1952,17 @@ void gen_opf(TCCState *tcc_state, int op)
 			assert(!(vtop[-1].r & VT_LVAL));
 
 			if ((vtop->type.t & VT_BTYPE) == VT_DOUBLE)
-				o(0x66);
+				o(tcc_state, 0x66);
 			if (op == TOK_EQ || op == TOK_NE)
-				o(0x2e0f); /* ucomisd */
+				o(tcc_state, 0x2e0f); /* ucomisd */
 			else
-				o(0x2f0f); /* comisd */
+				o(tcc_state, 0x2f0f); /* comisd */
 
 			if (vtop->r & VT_LVAL) {
 				gen_modrm(tcc_state, vtop[-1].r, r, vtop->sym, fc);
 			}
 			else {
-				o(0xc0 + REG_VALUE(vtop[0].r) + REG_VALUE(vtop[-1].r) * 8);
+				o(tcc_state, 0xc0 + REG_VALUE(vtop[0].r) + REG_VALUE(vtop[-1].r) * 8);
 			}
 
 			vtop--;
@@ -2010,19 +2010,19 @@ void gen_opf(TCCState *tcc_state, int op)
 			}
 
 			if ((ft & VT_BTYPE) == VT_DOUBLE) {
-				o(0xf2);
+				o(tcc_state, 0xf2);
 			}
 			else {
-				o(0xf3);
+				o(tcc_state, 0xf3);
 			}
-			o(0x0f);
-			o(0x58 + a);
+			o(tcc_state, 0x0f);
+			o(tcc_state, 0x58 + a);
 
 			if (vtop->r & VT_LVAL) {
 				gen_modrm(tcc_state, vtop[-1].r, r, vtop->sym, fc);
 			}
 			else {
-				o(0xc0 + REG_VALUE(vtop[0].r) + REG_VALUE(vtop[-1].r) * 8);
+				o(tcc_state, 0xc0 + REG_VALUE(vtop[0].r) + REG_VALUE(vtop[-1].r) * 8);
 			}
 
 			vtop--;
@@ -2040,38 +2040,38 @@ void gen_cvt_itof(TCCState *tcc_state, int t)
 		if ((vtop->type.t & VT_BTYPE) == VT_LLONG) {
 			/* signed long long to float/double/long double (unsigned case
 			is handled generically) */
-			o(0x50 + (vtop->r & VT_VALMASK)); /* push r */
-			o(0x242cdf); /* fildll (%rsp) */
-			o(0x08c48348); /* add $8, %rsp */
+			o(tcc_state, 0x50 + (vtop->r & VT_VALMASK)); /* push r */
+			o(tcc_state, 0x242cdf); /* fildll (%rsp) */
+			o(tcc_state, 0x08c48348); /* add $8, %rsp */
 		}
 		else if ((vtop->type.t & (VT_BTYPE | VT_UNSIGNED)) ==
 			(VT_INT | VT_UNSIGNED)) {
 			/* unsigned int to float/double/long double */
-			o(0x6a); /* push $0 */
-			g(0x00);
-			o(0x50 + (vtop->r & VT_VALMASK)); /* push r */
-			o(0x242cdf); /* fildll (%rsp) */
-			o(0x10c48348); /* add $16, %rsp */
+			o(tcc_state, 0x6a); /* push $0 */
+			g(tcc_state, 0x00);
+			o(tcc_state, 0x50 + (vtop->r & VT_VALMASK)); /* push r */
+			o(tcc_state, 0x242cdf); /* fildll (%rsp) */
+			o(tcc_state, 0x10c48348); /* add $16, %rsp */
 		}
 		else {
 			/* int to float/double/long double */
-			o(0x50 + (vtop->r & VT_VALMASK)); /* push r */
-			o(0x2404db); /* fildl (%rsp) */
-			o(0x08c48348); /* add $8, %rsp */
+			o(tcc_state, 0x50 + (vtop->r & VT_VALMASK)); /* push r */
+			o(tcc_state, 0x2404db); /* fildl (%rsp) */
+			o(tcc_state, 0x08c48348); /* add $8, %rsp */
 		}
 		vtop->r = TREG_ST0;
 	}
 	else {
 		int r = get_reg(tcc_state, RC_FLOAT);
 		gv(tcc_state, RC_INT);
-		o(0xf2 + ((t & VT_BTYPE) == VT_FLOAT ? 1 : 0));
+		o(tcc_state, 0xf2 + ((t & VT_BTYPE) == VT_FLOAT ? 1 : 0));
 		if ((vtop->type.t & (VT_BTYPE | VT_UNSIGNED)) ==
 			(VT_INT | VT_UNSIGNED) ||
 			(vtop->type.t & VT_BTYPE) == VT_LLONG) {
-			o(0x48); /* REX */
+			o(tcc_state, 0x48); /* REX */
 		}
-		o(0x2a0f);
-		o(0xc0 + (vtop->r & VT_VALMASK) + REG_VALUE(r) * 8); /* cvtsi2sd */
+		o(tcc_state, 0x2a0f);
+		o(tcc_state, 0xc0 + (vtop->r & VT_VALMASK) + REG_VALUE(r) * 8); /* cvtsi2sd */
 		vtop->r = r;
 	}
 }
@@ -2088,36 +2088,36 @@ void gen_cvt_ftof(TCCState *tcc_state, int t)
 	if (bt == VT_FLOAT) {
 		gv(tcc_state, RC_FLOAT);
 		if (tbt == VT_DOUBLE) {
-			o(0x140f); /* unpcklps */
-			o(0xc0 + REG_VALUE(vtop->r) * 9);
-			o(0x5a0f); /* cvtps2pd */
-			o(0xc0 + REG_VALUE(vtop->r) * 9);
+			o(tcc_state, 0x140f); /* unpcklps */
+			o(tcc_state, 0xc0 + REG_VALUE(vtop->r) * 9);
+			o(tcc_state, 0x5a0f); /* cvtps2pd */
+			o(tcc_state, 0xc0 + REG_VALUE(vtop->r) * 9);
 		}
 		else if (tbt == VT_LDOUBLE) {
 			save_reg(tcc_state, RC_ST0);
 			/* movss %xmm0,-0x10(%rsp) */
-			o(0x110ff3);
-			o(0x44 + REG_VALUE(vtop->r) * 8);
-			o(0xf024);
-			o(0xf02444d9); /* flds -0x10(%rsp) */
+			o(tcc_state, 0x110ff3);
+			o(tcc_state, 0x44 + REG_VALUE(vtop->r) * 8);
+			o(tcc_state, 0xf024);
+			o(tcc_state, 0xf02444d9); /* flds -0x10(%rsp) */
 			vtop->r = TREG_ST0;
 		}
 	}
 	else if (bt == VT_DOUBLE) {
 		gv(tcc_state, RC_FLOAT);
 		if (tbt == VT_FLOAT) {
-			o(0x140f66); /* unpcklpd */
-			o(0xc0 + REG_VALUE(vtop->r) * 9);
-			o(0x5a0f66); /* cvtpd2ps */
-			o(0xc0 + REG_VALUE(vtop->r) * 9);
+			o(tcc_state, 0x140f66); /* unpcklpd */
+			o(tcc_state, 0xc0 + REG_VALUE(vtop->r) * 9);
+			o(tcc_state, 0x5a0f66); /* cvtpd2ps */
+			o(tcc_state, 0xc0 + REG_VALUE(vtop->r) * 9);
 		}
 		else if (tbt == VT_LDOUBLE) {
 			save_reg(tcc_state, RC_ST0);
 			/* movsd %xmm0,-0x10(%rsp) */
-			o(0x110ff2);
-			o(0x44 + REG_VALUE(vtop->r) * 8);
-			o(0xf024);
-			o(0xf02444dd); /* fldl -0x10(%rsp) */
+			o(tcc_state, 0x110ff2);
+			o(tcc_state, 0x44 + REG_VALUE(vtop->r) * 8);
+			o(tcc_state, 0xf024);
+			o(tcc_state, 0xf02444dd); /* fldl -0x10(%rsp) */
 			vtop->r = TREG_ST0;
 		}
 	}
@@ -2126,19 +2126,19 @@ void gen_cvt_ftof(TCCState *tcc_state, int t)
 		gv(tcc_state, RC_ST0);
 		r = get_reg(tcc_state, RC_FLOAT);
 		if (tbt == VT_DOUBLE) {
-			o(0xf0245cdd); /* fstpl -0x10(%rsp) */
+			o(tcc_state, 0xf0245cdd); /* fstpl -0x10(%rsp) */
 			/* movsd -0x10(%rsp),%xmm0 */
-			o(0x100ff2);
-			o(0x44 + REG_VALUE(r) * 8);
-			o(0xf024);
+			o(tcc_state, 0x100ff2);
+			o(tcc_state, 0x44 + REG_VALUE(r) * 8);
+			o(tcc_state, 0xf024);
 			vtop->r = r;
 		}
 		else if (tbt == VT_FLOAT) {
-			o(0xf0245cd9); /* fstps -0x10(%rsp) */
+			o(tcc_state, 0xf0245cd9); /* fstps -0x10(%rsp) */
 			/* movss -0x10(%rsp),%xmm0 */
-			o(0x100ff3);
-			o(0x44 + REG_VALUE(r) * 8);
-			o(0xf024);
+			o(tcc_state, 0x100ff3);
+			o(tcc_state, 0x44 + REG_VALUE(r) * 8);
+			o(tcc_state, 0xf024);
 			vtop->r = r;
 		}
 	}
@@ -2163,16 +2163,16 @@ void gen_cvt_ftoi(TCCState *tcc_state, int t)
 
 	r = get_reg(tcc_state, RC_INT);
 	if (bt == VT_FLOAT) {
-		o(0xf3);
+		o(tcc_state, 0xf3);
 	}
 	else if (bt == VT_DOUBLE) {
-		o(0xf2);
+		o(tcc_state, 0xf2);
 	}
 	else {
 		assert(0);
 	}
-	orex(size == 8, r, 0, 0x2c0f); /* cvttss2si or cvttsd2si */
-	o(0xc0 + REG_VALUE(vtop->r) + REG_VALUE(r) * 8);
+	orex(tcc_state, size == 8, r, 0, 0x2c0f); /* cvttss2si or cvttsd2si */
+	o(tcc_state, 0xc0 + REG_VALUE(vtop->r) + REG_VALUE(r) * 8);
 	vtop->r = r;
 }
 
@@ -2206,14 +2206,14 @@ ST_FUNC void gen_vla_alloc(TCCState *tcc_state, CType *type, int align) {
 	int r;
 	r = gv(tcc_state, RC_INT); /* allocation size */
 	/* sub r,%rsp */
-	o(0x2b48);
-	o(0xe0 | REG_VALUE(r));
+	o(tcc_state, 0x2b48);
+	o(tcc_state, 0xe0 | REG_VALUE(r));
 	/* We align to 16 bytes rather than align */
 	/* and ~15, %rsp */
-	o(0xf0e48348);
+	o(tcc_state, 0xf0e48348);
 	/* mov %rsp, r */
-	o(0x8948);
-	o(0xe0 | REG_VALUE(r));
+	o(tcc_state, 0x8948);
+	o(tcc_state, 0xe0 | REG_VALUE(r));
 	vpop(tcc_state);
 	vset(tcc_state, type, r, 0);
 #endif

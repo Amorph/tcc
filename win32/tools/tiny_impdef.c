@@ -28,9 +28,9 @@
 #include <io.h>
 #include <malloc.h>
 
-char *get_export_names(int fd);
-#define tcc_free free
-#define tcc_realloc realloc
+char *get_export_names(struct TCCState *tcc_state, int fd);
+#define tcc_free(tcc_state, p) free(p)
+#define tcc_realloc(tcc_state, p, s) realloc(p,s)
 
 /* extract the basename of a file */
 static char *file_basename(const char *name)
@@ -54,6 +54,8 @@ int main(int argc, char **argv)
     const char *file, **pp;
     char path[MAX_PATH], *p, *q;
     FILE *fp, *op;
+
+	struct TCCState* tcc_state = 0;
 
     infile[0] = 0;
     outfile[0] = 0;
@@ -115,7 +117,7 @@ usage:
     if (v)
         printf("--> %s\n", file);
 
-    p = get_export_names(fileno(fp));
+	p = get_export_names(tcc_state, fileno(fp));
     if (NULL == p) {
         fprintf(stderr, "tiny_impdef: could not get exported function names.\n");
         goto the_end;
@@ -169,7 +171,7 @@ int read_mem(int fd, unsigned offset, void *buffer, unsigned len)
 /* -------------------------------------------------------------- */
 #endif
 
-char *get_export_names(int fd)
+char *get_export_names(struct TCCState *tcc_state, int fd)
 {
     int l, i, n, n0;
     char *p;
@@ -231,9 +233,9 @@ found:
         namep += sizeof ptr;
         for (l = 0;;) {
             if (n+1 >= n0)
-                p = tcc_realloc(p, n0 = n0 ? n0 * 2 : 256);
+				p = tcc_realloc(tcc_state, p, n0 = n0 ? n0 * 2 : 256);
             if (!read_mem(fd, ptr - ref + l++, p + n, 1)) {
-                tcc_free(p), p = NULL;
+				tcc_free(tcc_state, p), p = NULL;
                 goto the_end;
             }
             if (p[n++] == 0)
